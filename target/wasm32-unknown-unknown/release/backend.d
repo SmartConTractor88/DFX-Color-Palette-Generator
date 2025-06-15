@@ -1,1 +1,1 @@
-/home/smart_con_tractor/canisters/github-rust-examples-helloworld/target/wasm32-unknown-unknown/release/backend.wasm: /home/smart_con_tractor/canisters/github-rust-examples-helloworld/backend/lib.rs
+/home/smart_con_tractor/canisters/color_palette_generator/target/wasm32-unknown-unknown/release/backend.wasm: /home/smart_con_tractor/canisters/color_palette_generator/backend/lib.rs
