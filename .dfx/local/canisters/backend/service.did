@@ -1,0 +1,5 @@
+service : {
+  greet : (text) -> (text) query;
+  random_palette : () -> (vec text);
+  set_greeting : (text) -> ();
+}
