@@ -1,24 +1,62 @@
 import { backend } from 'declarations/backend';
 
+// Helper: convert hex to RGB and calculate brightness
+function getTextColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+  return brightness > 128 ? "#000000" : "#FFFFFF"; // dark bg -> white text, bright bg -> black text
+}
+
 // Function to generate and display the palette
 async function generatePalette() {
   try {
-    const colors = await backend.random_palette(); // Fetch colors from backend
+    const colors = await backend.random_palette();
     const colorDivs = document.querySelectorAll(".gen-color");
 
     colors.forEach((color, i) => {
       if (colorDivs[i]) {
-        // Set the background color
-        colorDivs[i].style.backgroundColor = color;
+        const div = colorDivs[i];
+        div.innerHTML = ""; // Clear previous content
+        div.style.backgroundColor = color;
 
-        // Set the text content to show the HEX code
-        colorDivs[i].innerText = color;
+        const textColor = getTextColor(color);
 
-        // Optional: style the text for visibility
-        colorDivs[i].style.color = "#000"; // or "#fff" depending on bg color
-        colorDivs[i].style.fontWeight = "bold";
-        colorDivs[i].style.textAlign = "center";
-        colorDivs[i].style.lineHeight = "100px"; // assuming height = 100px
+        // Container
+        const wrapper = document.createElement("div");
+        wrapper.className = "hex-wrapper";
+
+        // HEX code span
+        const hexText = document.createElement("span");
+        hexText.className = "hex-code";
+        hexText.innerText = color;
+        hexText.style.color = textColor;
+
+        // Copy icon
+        const copyIcon = document.createElement("i");
+        copyIcon.className = "fa-solid fa-copy copy-icon";
+        copyIcon.style.color = textColor;
+        copyIcon.title = "Copy to clipboard";
+
+        copyIcon.onclick = () => {
+          navigator.clipboard.writeText(color).then(() => {
+            copyIcon.classList.replace("fa-copy", "fa-check");
+            setTimeout(() => {
+              copyIcon.classList.replace("fa-check", "fa-copy");
+            }, 1000);
+          });
+        };
+
+        // Assemble
+        wrapper.appendChild(hexText);
+        wrapper.appendChild(copyIcon);
+        div.appendChild(wrapper);
+
+        // Ensure proper layout
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.justifyContent = "center";
       }
     });
   } catch (e) {
@@ -26,11 +64,9 @@ async function generatePalette() {
   }
 }
 
-// On DOM load, generate palette immediately
-document.addEventListener("DOMContentLoaded", () => {
-  generatePalette();
-});
+// Initial load
+document.addEventListener("DOMContentLoaded", generatePalette);
 
-// Also allow generation on button click
+// Regenerate on button click
 document.getElementById("generate").addEventListener("click", generatePalette);
 
