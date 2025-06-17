@@ -12,30 +12,32 @@ function getTextColor(hex) {
 // Function to generate and display the palette
 async function generatePalette() {
   try {
-    const colors = await backend.random_palette();
     const colorDivs = document.querySelectorAll(".gen-color");
+
+    // Show shimmer
+    colorDivs.forEach(div => div.classList.add("loading"));
+
+    const colors = await backend.random_palette();
 
     colors.forEach((color, i) => {
       if (colorDivs[i]) {
         const div = colorDivs[i];
-        div.innerHTML = ""; // Clear previous content
+        div.classList.remove("loading"); // Remove shimmer once loaded
+        div.innerHTML = "";
         div.style.backgroundColor = color;
 
         const textColor = getTextColor(color);
 
-        // Container
         const wrapper = document.createElement("div");
         wrapper.className = "hex-wrapper";
 
-        // HEX code span
         const hexText = document.createElement("span");
         hexText.className = "hex-code";
         hexText.innerText = color;
         hexText.style.color = textColor;
 
-        // Copy icon
         const copyIcon = document.createElement("i");
-        copyIcon.className = "fa-solid fa-copy copy-icon";
+        copyIcon.className = "fas fa-copy copy-icon";
         copyIcon.style.color = textColor;
         copyIcon.title = "Copy to clipboard";
 
@@ -48,12 +50,10 @@ async function generatePalette() {
           });
         };
 
-        // Assemble
         wrapper.appendChild(hexText);
         wrapper.appendChild(copyIcon);
         div.appendChild(wrapper);
 
-        // Ensure proper layout
         div.style.display = "flex";
         div.style.alignItems = "center";
         div.style.justifyContent = "center";
