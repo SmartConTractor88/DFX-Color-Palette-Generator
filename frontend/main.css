@@ -1,95 +1,45 @@
+/* ================================
+   Color Variables
+   ================================ */
 :root {
-    --bg-color-1: #FCFFFD;
+    --bg-color: #FCFFFD;
     --border-color: rgb(163, 165, 170);
-    --battleship-gray: #817f75ff;
+    --accent-bright: rgb(238, 207, 54);
+    --accent-dark: #2c2c2c;
 }
 
+
+/* ================================
+   Global Styles
+   ================================ */
 html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-color);
-    font-family: 'DM Sans', sans-serif;
-    overflow-x: hidden;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color-1);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
 }
 
 body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    font-size: 1.5rem;
-    width: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  font-size: 1.5rem;
 }
 
+/* ================================
+   Navbar Styles
+   ================================ */
 .navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   height: 8vh;
   background-color: var(--bg-color);
   border: 1px solid var(--border-color);
-}
-
-.toolbar {
-    height: 8vh;
-    background-color: var(--bg-color);
-    border: 1px solid var(--border-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-}
-
-.generate {
-    display: flex;
-    margin: 0;
-    padding: 0;
-    width: 20%;
-    height: 100%;
-    background-color: transparent;
-    border: 1px solid var(--border-color);
-    font-size: large;
-    cursor: pointer;
-    align-items: center;
-    justify-content: center;
-    font-family: 'DM Sans', sans-serif;
-}
-
-.generate:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-    transition: 0.5s ease;
-}
-
-.palette {
-    display: flex;
-    gap: 0px;
-    justify-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 84vh;
-    border: none;
-    margin: 0;
-    padding: 0;
-}
-
-.gen-color {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    justify-items: center;
-    display: flex;
-    width: 20%;
-    height: 100%;
-    transition: background-color 0.3s ease;
-    position: relative;
-}
-
-.hex-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.copy-icon {
-    font-size: 1.2rem;
-    cursor: pointer;
+  padding: 0 20px;
 }
 
 .logo-wrapper {
@@ -98,12 +48,12 @@ body {
   justify-content: center;
   height: 90%;
   width: 15%;
-  position: relative;
   padding-top: 3px;
   padding-left: 16px;
-  gap: 0px;
+  gap: 0;
   cursor: pointer;
   transition: transform 0.3s ease;
+  position: relative;
 }
 
 .logo-text {
@@ -121,40 +71,197 @@ body {
 }
 
 @keyframes smoothDropAndReturn {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  30% {
-    transform: translateY(60px);
-    opacity: 0;
-  }
-  50% {
-    transform: translateY(-40px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  0%   { transform: translateY(0); opacity: 1; }
+  30%  { transform: translateY(60px); opacity: 0; }
+  50%  { transform: translateY(-40px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
-.gen-color:nth-child(1) {
-  background-color: #eeeeee;
-}
-.gen-color:nth-child(2) {
-  background-color: #d6d6d6;
-}
-.gen-color:nth-child(3) {
-  background-color: #b7b7b7;
-}
-.gen-color:nth-child(4) {
-  background-color: #7b7b7b;
-}
-.gen-color:nth-child(5) {
-  background-color: #5f5f5f;
+.theme-toggle-wrapper {
+  display: flex;
+  align-items: center;
 }
 
+/*-------------------------*/
+/* Theme Toggle (Switch)   */
+/*-------------------------*/
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 70px;
+  height: 36px;
+}
+
+.theme-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 50px;
+  transition: background-color 0.4s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 18px;
+  color: #fff;
+}
+
+.slider::before {
+  content: "";
+  position: absolute;
+  height: 28px;
+  width: 28px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.4s;
+  z-index: 0; /* Moved behind icons */
+}
+
+.slider .sun,
+.slider .moon {
+  z-index: 1; /* Icons appear above the knob */
+  position: relative;
+  line-height: 1;
+  font-size: 18px;
+}
+
+.slider .sun {
+  color: var(--accent-bright);
+  transition: color 0.3s ease;
+}
+
+.slider .moon {
+  color: #999999; /* dimmed moon */
+  transition: color 0.3s ease;
+}
+
+/* Dark mode: sun dimmed, moon visible */
+.theme-switch input:checked + .slider .sun {
+  color: #999999;
+}
+
+.theme-switch input:checked + .slider .moon {
+  color: var(--accent-dark);
+}
+
+.theme-switch input:checked + .slider::before {
+  transform: translateX(34px); /* 70px width - 28px knob - 8px*2 padding = ~34px */
+}
+
+/* ================================
+   Toolbar Styles
+   ================================ */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 20px;
+  height: 8vh;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+}
+
+.generate {
+  width: 20%;
+  height: 100%;
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  font-size: large;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.5s ease;
+}
+
+.generate:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.toolbar-functions {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.toolbar-function {
+  font-size: 1.4rem;
+  color: #444;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.toolbar-function:hover {
+  color: #000;
+}
+
+/* ================================
+   Palette Container
+   ================================ */
+.palette {
+  display: flex;
+  width: 100%;
+  height: 84vh;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  justify-items: center;
+  border: none;
+}
+
+/* ================================
+   Color Boxes (.gen-color)
+   ================================ */
+.gen-color {
+  display: flex;
+  width: 20%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: background-color 0.5s ease;
+}
+
+/* Default grayscale colors as fallback */
+.gen-color:nth-child(1) { background-color: #eeeeee; }
+.gen-color:nth-child(2) { background-color: #d6d6d6; }
+.gen-color:nth-child(3) { background-color: #b7b7b7; }
+.gen-color:nth-child(4) { background-color: #7b7b7b; }
+.gen-color:nth-child(5) { background-color: #5f5f5f; }
+
+/* ================================
+   Hex Code + Copy Icon Wrapper
+   ================================ */
+.hex-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.copy-icon {
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+/* ================================
+   Loading Shimmer Effect
+   ================================ */
 .gen-color.loading {
   position: relative;
   overflow: hidden;
@@ -177,7 +284,73 @@ body {
 }
 
 @keyframes shimmer {
-  100% {
-    left: 100%;
+  100% { left: 100%; }
+}
+
+/* ================================
+   Mobile Responsive Styles
+   ================================ */
+@media (max-width: 768px) {
+
+  .navbar {
+    flex-direction: column;
+    height: auto;
+    padding: 10px;
+  }
+
+  .logo-wrapper {
+    width: 100%;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .logo-text {
+    height: 40px;
+  }
+
+  .logo-drop {
+    height: 30px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    height: auto;
+    padding: 10px 0;
+    gap: 10px;
+  }
+
+  .generate {
+    width: 90%;
+    height: 45px;
+    font-size: 1.2rem;
+  }
+
+  .toolbar-functions {
+    justify-content: center;
+    gap: 30px;
+  }
+
+  .toolbar-function {
+    font-size: 1.6rem;
+  }
+
+  .palette {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .gen-color {
+    width: 100%;
+    height: 18vh;
+    font-size: 1.2rem;
+  }
+
+  .hex-wrapper {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .copy-icon {
+    font-size: 1.4rem;
   }
 }
