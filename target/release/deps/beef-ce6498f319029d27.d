@@ -1,0 +1,11 @@
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/libbeef-ce6498f319029d27.rmeta: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/traits.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/wide.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/generic.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lean.rs
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/libbeef-ce6498f319029d27.rlib: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/traits.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/wide.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/generic.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lean.rs
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/beef-ce6498f319029d27.d: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/traits.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/wide.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/generic.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lean.rs
+
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lib.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/traits.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/wide.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/generic.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/beef-0.5.2/src/lean.rs:

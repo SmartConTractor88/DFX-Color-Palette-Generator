@@ -1,0 +1,10 @@
+/home/smart_con_tractor/canisters/color_palette_generator/target/wasm32-unknown-unknown/release/deps/liblogos-56efca06be1d0cb9.rmeta: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lexer.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/source.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/internal.rs
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/wasm32-unknown-unknown/release/deps/liblogos-56efca06be1d0cb9.rlib: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lexer.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/source.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/internal.rs
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/wasm32-unknown-unknown/release/deps/logos-56efca06be1d0cb9.d: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lexer.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/source.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/internal.rs
+
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lib.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/lexer.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/source.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/logos-0.12.1/src/internal.rs:

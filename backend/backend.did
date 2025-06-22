@@ -1,5 +1,11 @@
+type Palette = record {
+  title: text;
+  colors: vec text;
+};
+
 service : {
-  greet : (text) -> (text) query;
-  random_palette : () -> (vec text);
-  set_greeting : (text) -> ();
+  add_palette: (text, vec text) -> () ;
+  get_palettes: () -> (vec Palette) query;
+  delete_palette: (vec text) -> (bool);
+  update_palette_title: (vec text, text) -> (bool);
 }
