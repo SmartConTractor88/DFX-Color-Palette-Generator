@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="main.css" />
     <script type="module" src="./index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@dfinity/auth-client@latest/dist/auth-client.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     />
     <title>Color Palette</title>
+    <link rel="icon" type="image/png" href="static/HueHut_drop.png">
   </head>
   <body>
     <nav class="navbar">
@@ -18,49 +20,55 @@
         <img src="static/HueHut_logo_b.png" alt="HueHut Logo Text" class="logo-text" />
         <img src="static/HueHut_drop.png" alt="HueHut Teardrop" class="logo-drop" />
       </div>
-      <div class="user-menu">
-        <div class="profile-display-wrapper">
-          <div class="profile-display" id="profileDisplay">
-            <i class="fa-solid fa-user"></i>
-            <span id="profileName">Guest</span>
-          </div>
-          <div id="principalTooltip" class="principal-tooltip">
-            <span id="fullPrincipal">Principal goes here</span>
-            <i class="fas fa-copy copy-icon" id="copyPrincipalIcon" title="Copy Principal"></i>
-          </div>
-        </div>
-
-        <div class="dropdown-menu" id="dropdownMenu">
-        <div class="dropdown-header">Sign in with:</div>
-        <div class="dropdown-option" id="login-ii">
-          <i class="fa-solid fa-infinity"></i>
-          Internet Identity
-        </div>
-        <div class="dropdown-divider"></div>
-        <div class="dropdown-option disabled" id="logout">Sign Out</div>
-      </div>
-      </div>
-    </nav>
-    <div class="toolbar">
-      <a class="generate" id="generate">Generate Random</a>
-
-      <!-- Right section of the toolbar -->
-      <div class="toolbar-right">
-          <div id="favorites-wrapper" class="toolbar-functions favorites-wrapper">
-            <i id="like-button" class="far fa-heart toolbar-function disabled" title="Save to Favorites"></i>
-            <i id="favorites-dropdown-toggle" class="fas fa-chevron-down toolbar-function disabled" title="Show Favorites"></i>
-
-
-            <!-- Dropdown window for favorites -->
-            <div id="favorites-dropdown" class="favorites-dropdown hidden">
-              <p class="dropdown-placeholder">No favorites saved yet.</p>
+        <div class="user-menu">
+          <div class="profile-display-wrapper">
+            <div class="profile-display" id="profileDisplay">
+              <i class="fa-solid fa-user"></i>
+              <span id="profileName">Sign In</span>
+            </div>
+            <div id="principalTooltip" class="principal-tooltip">
+              <span id="fullPrincipal">Principal goes here</span>
+              <i class="fas fa-copy copy-icon" id="copyPrincipalIcon" title="Copy Principal"></i>
             </div>
           </div>
 
-          <div class="toolbar-functions">
-            <i id="copy-all" class="fas fa-copy toolbar-function" title="Copy All"></i>
-            <i id="download-png" class="fas fa-download toolbar-function" title="Download as PNG"></i>
+          <div class="dropdown-menu" id="dropdownMenu">
+          <div class="dropdown-header">Sign in with:</div>
+          <div class="dropdown-option" id="login-ii">
+            <i class="fa-solid fa-infinity"></i>
+            Internet Identity
           </div>
+          <div class="dropdown-divider"></div>
+          <div class="dropdown-option disabled" id="logout">Sign Out</div>
+        </div>
+      </div>
+    </nav>
+    
+    <div class="toolbar">
+      <a class="generate" id="generate">Generate</a>
+
+      <!-- Right section of the toolbar -->
+      <div class="toolbar-right">
+        <!-- NEW wrapper for positioning -->
+        <div id="favorites-wrapper" class="toolbar-functions favorites-wrapper">
+          <i id="like-button" class="far fa-heart toolbar-function disabled" title="Save to Favorites"></i>
+          <i id="favorites-dropdown-toggle" class="fas fa-chevron-down toolbar-function disabled" title="Show Favorites"></i>
+
+          <!-- Dropdown window for favorites -->
+          <div id="favorites-dropdown" class="favorites-dropdown">
+            <div class="favorites-scroll-container">
+              <p class="dropdown-placeholder">No favorites saved yet.</p>
+              <!-- dynamically added favorites go here -->
+            </div>
+          </div>
+        </div>
+        
+
+        <!-- Remaining toolbar icons -->
+        <div class="toolbar-functions">
+          <i id="copy-all" class="fas fa-copy toolbar-function" title="Copy All"></i>
+          <i id="download-png" class="fas fa-download toolbar-function" title="Download as PNG"></i>
+        </div>
       </div>
     </div>
 

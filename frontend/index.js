@@ -158,7 +158,13 @@ async function fetchFavoritesFromBackend() {
 
 function updateFavoritesDropdown(palettes = []) {
   const dropdown = document.getElementById("favorites-dropdown");
-  dropdown.innerHTML = "";
+  const scrollContainer = dropdown.querySelector(".favorites-scroll-container");
+
+  // Clear the scrollable content area
+  scrollContainer.innerHTML = "";
+
+  // Clear and rebuild the header
+  dropdown.querySelectorAll(".favorites-header").forEach(header => header.remove());
 
   // Create dropdown header
   const header = document.createElement("div");
@@ -173,54 +179,52 @@ function updateFavoritesDropdown(palettes = []) {
   deleteAllIcon.title = "Delete All Favorites";
 
   deleteAllIcon.onclick = async () => {
-  if (!confirm("Are you sure you want to delete all favorite palettes?")) return;
+    if (!confirm("Are you sure you want to delete all favorite palettes?")) return;
 
-  // Close dropdown instantly with animation
-  const dropdown = document.getElementById("favorites-dropdown");
-  const items = dropdown.querySelectorAll(".favorite-item");
+    const items = scrollContainer.querySelectorAll(".favorite-item");
 
-  items.forEach((item, i) => {
+    items.forEach((item, i) => {
+      setTimeout(() => {
+        item.classList.add("fade-out");
+      }, i * 80);
+    });
+
+    const totalDelay = items.length * 80 + 300;
+
     setTimeout(() => {
-      item.classList.add("fade-out");
-    }, i * 80); // 80ms stagger per item
-  });
+      dropdown.classList.add("closing");
+    }, totalDelay);
 
-  const totalDelay = items.length * 80 + 300; // last item fade + buffer
-
-  setTimeout(() => {
-    dropdown.classList.add("closing");
-  }, totalDelay);
-
-  setTimeout(() => {
-    dropdown.classList.add("hidden");
-    dropdown.classList.remove("closing");
-    toggleLikeButton(false);
-  }, totalDelay + 300); // match dropdown fade
+    setTimeout(() => {
+      dropdown.classList.remove("closing");
+      toggleLikeButton(false);
+    }, totalDelay + 300);
 
 
-  // Proceed with backend deletion
-  try {
-    const palettes = await backend.get_palettes();
-    for (const p of palettes) {
-      await backend.delete_palette(p.colors);
+    try {
+      const palettes = await backend.get_palettes();
+      for (const p of palettes) {
+        await backend.delete_palette(p.colors);
+      }
+      fetchFavoritesFromBackend();
+      setTimeout(() => toggleLikeButton(false), 100);
+    } catch (err) {
+      alert("Failed to delete all favorites.");
     }
-    fetchFavoritesFromBackend();
-    setTimeout(() => toggleLikeButton(false), 100);
-  } catch (err) {
-    alert("Failed to delete all favorites.");
-  }
-};
+  };
 
   header.appendChild(title);
   header.appendChild(deleteAllIcon);
-  dropdown.appendChild(header);
+  dropdown.insertBefore(header, scrollContainer);
 
+  // Show placeholder if empty
   if (palettes.length === 0) {
-    dropdown.innerHTML = '<p class="dropdown-placeholder">No favorites saved yet.</p>';
+    scrollContainer.innerHTML = '<p class="dropdown-placeholder">No favorites saved yet.</p>';
     return;
   }
 
-  palettes.forEach((palette, index) => {
+  // Build and insert favorite items
+  palettes.forEach((palette) => {
     const item = document.createElement("div");
     item.className = "favorite-item";
 
@@ -228,10 +232,9 @@ function updateFavoritesDropdown(palettes = []) {
     title.className = "favorite-title";
     title.value = palette.title || "Untitled";
 
-    // Editable title logic
     title.addEventListener("keydown", async (e) => {
       if (e.key === "Enter") {
-        title.blur(); // Trigger blur to save
+        title.blur();
       }
     });
 
@@ -240,13 +243,14 @@ function updateFavoritesDropdown(palettes = []) {
       if (newTitle && newTitle !== palette.title) {
         try {
           await backend.update_palette_title(palette.colors, newTitle);
-          palette.title = newTitle; // update local copy
+          palette.title = newTitle;
         } catch (err) {
           alert("Failed to update title.");
-          title.value = palette.title; // revert input on failure
+          title.value = palette.title;
         }
       }
     });
+
     const preview = document.createElement("div");
     preview.className = "color-preview";
 
@@ -288,12 +292,15 @@ function updateFavoritesDropdown(palettes = []) {
 
     actions.appendChild(copyIcon);
     actions.appendChild(deleteIcon);
+
     item.appendChild(title);
     item.appendChild(preview);
     item.appendChild(actions);
-    dropdown.appendChild(item);
+
+    scrollContainer.appendChild(item);
   });
 }
+
 
 // ================================
 // Favorites Dropdown Toggle
@@ -301,15 +308,35 @@ function updateFavoritesDropdown(palettes = []) {
 document.addEventListener("DOMContentLoaded", () => {
   const favoritesToggle = document.getElementById("favorites-dropdown-toggle");
   const favoritesDropdown = document.getElementById("favorites-dropdown");
+  const logoutButton = document.getElementById("logout");
 
   if (favoritesToggle && favoritesDropdown) {
     favoritesToggle.classList.remove("disabled");
     favoritesToggle.addEventListener("click", () => {
-      favoritesDropdown.classList.toggle("hidden");
+      favoritesDropdown.classList.remove("hidden");
+      const isOpen = favoritesDropdown.classList.toggle("show");
+      
+      // Rotate arrow based on dropdown state
+      if (isOpen) {
+        favoritesToggle.classList.add("rotated");
+      } else {
+        favoritesToggle.classList.remove("rotated");
+      }
     });
   }
 
   generatePalette(); // Initial palette on load
+});
+
+
+document.addEventListener("click", (e) => {
+  const toggle = document.getElementById("favorites-dropdown-toggle");
+  const dropdown = document.getElementById("favorites-dropdown");
+  if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
+    dropdown.classList.remove("show");
+    // Rotate arrow back when dropdown closes
+    toggle.classList.remove("rotated");
+  }
 });
 
 // ================================
@@ -380,13 +407,18 @@ let authClient;
 let userIsLoggedIn = false;
 
 profileDisplay.addEventListener("click", () => {
-  dropdownMenu.style.display =
-    dropdownMenu.style.display === "flex" ? "none" : "flex";
+  dropdownMenu.classList.toggle("show");
 });
 
 document.addEventListener("click", (e) => {
-  if (!document.querySelector(".user-menu").contains(e.target)) {
-    dropdownMenu.style.display = "none";
+  const logoutButton = document.getElementById("logout");
+  const userMenu = document.querySelector(".user-menu");
+
+  if (
+    !userMenu.contains(e.target) &&  // click outside user menu
+    !(logoutButton && logoutButton.contains(e.target)) // and not inside logout button
+  ) {
+    dropdownMenu.classList.remove("show");
   }
 });
 
@@ -403,22 +435,26 @@ copyPrincipalIcon.addEventListener("click", () => {
 });
 
 async function initAuth() {
-  authClient = await AuthClient.create();
+  authClient = authClient || await AuthClient.create();
   if (await authClient.isAuthenticated()) {
     const identity = authClient.getIdentity();
     const principal = identity.getPrincipal().toText();
     updateIdentityDisplay(principal);
   } else {
     userIsLoggedIn = false;
-    profileName.textContent = "Guest";
+    profileName.textContent = "Sign In";
     fullPrincipalSpan.textContent = "";
     tooltip.style.display = "none";
     logoutButton.classList.add("disabled");
+    logoutButton.disabled = true; // <-- Native disable set
     updateFavoritesUI(false);
   }
 }
 
 loginButton.addEventListener("click", async () => {
+  if (!authClient) {
+    authClient = await AuthClient.create();
+  }
   await authClient.login({
     identityProvider: `https://identity.ic0.app/#authorize`,
     onSuccess: async () => {
@@ -428,23 +464,40 @@ loginButton.addEventListener("click", async () => {
   });
 });
 
-logoutButton.addEventListener("click", async () => {
-  if (!logoutButton.classList.contains("disabled")) {
-    await authClient.logout();
-    userIsLoggedIn = false;
-    profileName.textContent = "Guest";
-    fullPrincipalSpan.textContent = "";
-    tooltip.style.display = "none";
-    logoutButton.classList.add("disabled");
-    updateFavoritesUI(false);
-  }
-});
+// Attach logout event listener only if logoutButton exists
+if (logoutButton) {
+  logoutButton.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (logoutButton.disabled) {
+      console.log("Logout button is disabled — skipping handler.");
+      return;
+    }
+
+    console.log("Logout button clicked");
+
+    try {
+      if (!authClient) {
+        authClient = await AuthClient.create();
+      }
+      await authClient.logout({ returnTo: window.location.origin });
+      console.log("Logout success, reloading page");
+      window.location.reload();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  });
+}
 
 function updateIdentityDisplay(principal) {
   userIsLoggedIn = true;
   profileName.textContent = principal.slice(0, 12) + "...";
   profileName.dataset.fullPrincipal = principal;
+  fullPrincipalSpan.textContent = principal;
+  tooltip.style.display = "";
   logoutButton.classList.remove("disabled");
+  logoutButton.disabled = false; // <-- Native disable removed
   updateFavoritesUI(true);
   fetchFavoritesFromBackend();
 }
@@ -466,6 +519,55 @@ function updateFavoritesUI(isLoggedIn) {
     likeBtn.classList.add('disabled');
     dropdownToggle.classList.add('disabled');
   }
+}
+
+// Tooltip hover logic
+const profileWrapper = document.querySelector('.profile-display-wrapper');
+
+let tooltipHideTimeout = null;
+let tooltipJustOpened = false;
+
+profileWrapper.addEventListener("mouseenter", () => {
+  if (userIsLoggedIn) {
+    clearTimeout(tooltipHideTimeout);
+    profileWrapper.classList.add("show-tooltip");
+
+    if (!tooltipJustOpened) {
+      tooltipJustOpened = true;
+
+      requestAnimationFrame(() => {
+        const tooltipRect = tooltip.getBoundingClientRect();
+        const screenWidth = window.innerWidth;
+
+        if (tooltipRect.right > screenWidth - 10) {
+          tooltip.style.left = "auto";
+          tooltip.style.right = "0";
+        } else {
+          tooltip.style.left = "0";
+          tooltip.style.right = "auto";
+        }
+      });
+    }
+  }
+});
+
+profileWrapper.addEventListener("mouseleave", () => {
+  tooltipHideTimeout = setTimeout(hideTooltip, 300);
+});
+
+tooltip.addEventListener("mouseenter", () => {
+  clearTimeout(tooltipHideTimeout);
+});
+
+tooltip.addEventListener("mouseleave", () => {
+  tooltipHideTimeout = setTimeout(hideTooltip, 300);
+});
+
+function hideTooltip() {
+  profileWrapper.classList.remove("show-tooltip");
+  tooltip.style.left = "0";
+  tooltip.style.right = "auto";
+  tooltipJustOpened = false;
 }
 
 // ================================

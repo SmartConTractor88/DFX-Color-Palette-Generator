@@ -231,6 +231,7 @@ type IdentityAuthnInfo = record {
 type IdentityInfo = record {
   authn_methods : vec AuthnMethodData;
   metadata : MetadataMapV2;
+  name : opt text;
   authn_method_registration : opt AuthnMethodRegistrationInfo;
   openid_credentials : opt vec OpenIdCredential;
 };
@@ -247,6 +248,16 @@ type IdentityMetadataReplaceError = variant {
   };
 };
 type IdentityNumber = nat64;
+type IdentityPropertiesReplace = record { name : opt text };
+type IdentityPropertiesReplaceError = variant {
+  InternalCanisterError : text;
+  Unauthorized : principal;
+  NameTooLong : record { limit : nat64 };
+  StorageSpaceExceeded : record {
+    space_required : nat64;
+    space_available : nat64;
+  };
+};
 type InternetIdentityInit = record {
   fetch_root_key : opt bool;
   openid_google : opt opt OpenIdConfig;
@@ -467,6 +478,9 @@ service : (opt InternetIdentityInit) -> {
     );
   identity_metadata_replace : (IdentityNumber, MetadataMapV2) -> (
       variant { Ok; Err : IdentityMetadataReplaceError },
+    );
+  identity_properties_replace : (IdentityNumber, IdentityPropertiesReplace) -> (
+      variant { Ok; Err : IdentityPropertiesReplaceError },
     );
   identity_registration_finish : (IdRegFinishArg) -> (
       variant { Ok : IdRegFinishResult; Err : IdRegFinishError },

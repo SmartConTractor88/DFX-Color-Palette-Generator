@@ -19,7 +19,12 @@
         "entrypoint": "frontend/index.html"
       },
       "source": ["frontend/dist"],
-      "type": "assets"
+      "type": "assets",
+      "headers": {
+        "/": {
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; connect-src 'self' https://identity.ic0.app; style-src 'self' 'unsafe-inline';"
+        }
+      }
     },
     "internet_identity": {
       "candid": "https://github.com/dfinity/internet-identity/releases/latest/download/internet_identity.did",
@@ -35,3 +40,4 @@
   },
   "output_env_file": ".env"
 }
+

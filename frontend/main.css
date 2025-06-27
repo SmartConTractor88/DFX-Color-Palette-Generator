@@ -1,5 +1,5 @@
 /* ================================
-   Color Variables
+   CSS Variables & Root Styles
    ================================ */
 :root {
     --bg-color: #FCFFFD;
@@ -8,15 +8,14 @@
     --accent-dark: #2c2c2c;
 }
 
-
 /* ================================
-   Global Styles
+   Global Styles & Reset
    ================================ */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background-color: var(--bg-color-1);
+  background-color: var(--bg-color);
   font-family: 'DM Sans', sans-serif;
   overflow-x: hidden;
 }
@@ -30,7 +29,23 @@ body {
 }
 
 /* ================================
-   Navbar Styles
+   Utility Classes
+   ================================ */
+.hidden {
+  display: none !important;
+}
+
+.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ================================
+   Layout Components
+   ================================ */
+
+/* ================================
+   Navbar Component
    ================================ */
 .navbar {
   display: flex;
@@ -42,6 +57,7 @@ body {
   padding: 0 20px;
 }
 
+/* Logo Section */
 .logo-wrapper {
   display: flex;
   align-items: center;
@@ -49,7 +65,6 @@ body {
   height: 90%;
   width: 15%;
   padding-top: 3px;
-  padding-left: 16px;
   gap: 0;
   cursor: pointer;
   transition: transform 0.3s ease;
@@ -70,14 +85,7 @@ body {
   animation: smoothDropAndReturn 1.0s ease-in-out;
 }
 
-@keyframes smoothDropAndReturn {
-  0%   { transform: translateY(0); opacity: 1; }
-  30%  { transform: translateY(60px); opacity: 0; }
-  50%  { transform: translateY(-40px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
-}
-
-/* User menu styles */
+/* User Menu Section */
 .user-menu {
   position: relative;
   display: flex;
@@ -95,6 +103,10 @@ body {
   box-sizing: border-box;
 }
 
+.user-menu:active {
+  animation: pulse 200ms ease;
+}
+
 .profile-display {
   display: flex;
   position: relative;
@@ -104,11 +116,29 @@ body {
   border-radius: 16px;
 }
 
+#profileName {
+  font-weight: 500;
+}
+
+/* Profile Display Wrapper */
+.profile-display-wrapper {
+  position: relative;
+  max-width: 100vw;
+}
+
+.profile-display-wrapper.show-tooltip #principalTooltip {
+  display: block;
+  right: auto;
+  left: 0;
+  transform: translateY(6px);
+}
+
+/* Principal Tooltip */
 #principalTooltip {
   position: absolute;
   top: 100%;
-  left: 0;           /* align with left edge of profile-display */
-  transform: translateY(6px); /* small vertical gap */
+  left: 0;
+  transform: translateY(6px);
   background-color: #222;
   color: #fff;
   padding: 8px 12px;
@@ -118,15 +148,24 @@ body {
   display: none;
   z-index: 1001;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  max-width: 90vw;
+  max-width: calc(100vw - 20px);
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: auto;
+  box-sizing: border-box;
 }
 
-#profileName {
-  font-weight: 500;
+.principal-tooltip .copy-icon {
+  cursor: pointer;
+  color: #aaa;
+  transition: color 0.2s;
 }
 
+.principal-tooltip .copy-icon:hover {
+  color: #fff;
+}
+
+/* Dropdown Menu */
 .dropdown-menu {
   position: absolute;
   top: 110%;
@@ -136,10 +175,22 @@ body {
   border-radius: 16px;
   width: 300px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  display: none;
   flex-direction: column;
   z-index: 1000;
   padding: 0.5rem 0;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: max-height 0.5s ease, opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+
+.dropdown-menu.show {
+  max-height: 500px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .dropdown-header {
@@ -155,70 +206,30 @@ body {
   transition: background 0.2s;
 }
 
-.dropdown-divider {
-  height: 1px;
-  background-color: #ddd;
-  margin: 0.4rem 0;
-}
-
 .dropdown-option i {
   margin-right: 0.2rem;
-  color: var(--accent-bright); /* Optional: make icons stand out */
+  color: var(--accent-bright);
 }
-
 
 .dropdown-option.disabled {
   color: #aaa;
   cursor: default;
 }
 
-/* Wrapper to position tooltip relative to profile */
-.profile-display-wrapper {
-  position: relative;
+.dropdown-divider {
+  height: 1px;
+  background-color: #ddd;
+  margin: 0.4rem 0;
 }
 
-/* Tooltip styles */
-#principalTooltip {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  transform: translateY(6px);
-  background-color: #222;
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  display: none;
-  z-index: 1001;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  max-width: 90vw;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  display: none;
-  pointer-events: auto; /* allow hover on tooltip */
-}
-
-.profile-display-wrapper.show-tooltip #principalTooltip {
-  display: block;
-}
-
-
-
-/* Tooltip copy icon */
-.principal-tooltip .copy-icon {
-  cursor: pointer;
-  color: #aaa;
-  transition: color 0.2s;
-}
-
-.principal-tooltip .copy-icon:hover {
-  color: #fff;
+/* Logout Button */
+#logout {
+  pointer-events: auto !important;
+  z-index: 9999;
 }
 
 /* ================================
-   Toolbar Styles
+   Toolbar Component
    ================================ */
 .toolbar {
   display: flex;
@@ -230,34 +241,40 @@ body {
   border: 1px solid var(--border-color);
 }
 
-/* Right side of toolbar holds all utility icons */
 .toolbar-right {
   display: flex;
   align-items: center;
   gap: 20px;
-  margin-left: auto; /* Pushes this group to the right */
+  margin-left: auto;
 }
 
+/* Generate Button */
 .generate {
-  width: 20%;
-  height: 100%;
-  background-color: transparent;
-  border: 1px solid var(--border-color);
-  font-size: large;
-  cursor: pointer;
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: 'DM Sans', sans-serif;
-  margin: 0;
-  padding: 0;
-  transition: background-color 0.5s ease;
+  padding: 0.25rem 0.5rem;
+  border: 4px solid transparent;
+  background:
+    linear-gradient(white, white) padding-box,
+    linear-gradient(to bottom, #44cafb, #44fbc7) border-box;
+  color: black;
+  font-size: 24px;
+  cursor: pointer;
+  height: 100%;
+  width: 20%;
+  box-sizing: border-box;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
 }
 
-.generate:hover {
-  background-color: rgba(0, 0, 0, 0.1);
+.generate:active {
+  animation: pulse 200ms ease;
 }
 
+/* Toolbar Functions */
 .toolbar-functions {
   display: flex;
   gap: 20px;
@@ -275,10 +292,15 @@ body {
   color: #000;
 }
 
+.toolbar-function.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Favorites Section */
 #favorites-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  position: relative;
+  display: inline-block;
 }
 
 .favorites-disabled .toolbar-function {
@@ -286,9 +308,6 @@ body {
   pointer-events: none;
 }
 
-/* Favorites dropdown */
-
-/* Dropdown trigger wrapper */
 .favorites-wrapper {
   position: relative;
   display: flex;
@@ -296,25 +315,61 @@ body {
   gap: 10px;
 }
 
-/* The actual dropdown list */
+/* Arrow rotation animation */
+#favorites-dropdown-toggle {
+  transition: transform 0.3s ease;
+}
+
+#favorites-dropdown-toggle.rotated {
+  transform: rotate(180deg);
+}
+
+.favorites-dropdown-wrapper {
+  position: relative;
+  width: 80%;
+}
+
 .favorites-dropdown {
   position: absolute;
   top: 120%;
   right: 0;
-  width: 300px;
-  max-height: 400px;
-  background-color: #fff;
+  transform: translateX(0);
+  background-color: var(--bg-color);
   border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 0.5rem 1rem;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  overflow-y: auto;
-  padding: 12px;
-  z-index: 999; /* ensure it's on top of other toolbar items */
+  z-index: 1000;
+  visibility: hidden;
+  opacity: 0;
+  max-width: calc(100vw - 40px);
+  width: max-content;
+  min-width: 280px;
+  
+  /* Animation properties */
+  transform: translateX(0) translateY(-20px);
+  transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+  pointer-events: none;
 }
 
-/* Hidden by default */
+.favorites-dropdown.show {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(0) translateY(0);
+  pointer-events: auto;
+}
+
 .favorites-dropdown.hidden {
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.favorites-scroll-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 12px;
+  box-sizing: border-box;
 }
 
 .favorites-header {
@@ -349,12 +404,7 @@ body {
   padding: 10px 0;
 }
 
-.toolbar-function.disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-/* Favorite palette item */
+/* Favorite Items */
 .favorite-item {
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -366,7 +416,12 @@ body {
   gap: 10px;
 }
 
-/* Editable title input */
+.favorite-item.fade-out {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
 .favorite-title {
   width: 100%;
   font-weight: 600;
@@ -379,7 +434,6 @@ body {
   border-bottom: 1px dashed var(--border-color);
 }
 
-/* Color swatch display */
 .color-preview {
   display: flex;
   gap: 6px;
@@ -392,7 +446,6 @@ body {
   border: 1px solid var(--border-color);
 }
 
-/* Action buttons */
 .favorite-actions {
   display: flex;
   justify-content: flex-end;
@@ -421,32 +474,8 @@ body {
   color: #111;
 }
 
-.favorites-dropdown {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.favorites-dropdown.closing {
-  opacity: 0;
-  transform: translateY(-10px);
-  pointer-events: none;
-}
-
-.favorite-item.fade-out {
-  opacity: 0;
-  transform: translateX(30px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.favorites-dropdown.closing {
-  opacity: 0;
-  transform: translateY(-10px);
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-
 /* ================================
-   Palette Container
+   Palette Component
    ================================ */
 .palette {
   display: flex;
@@ -460,9 +489,7 @@ body {
   border: none;
 }
 
-/* ================================
-   Color Boxes (.gen-color)
-   ================================ */
+/* Color Boxes */
 .gen-color {
   display: flex;
   width: 20%;
@@ -480,9 +507,7 @@ body {
 .gen-color:nth-child(4) { background-color: #7b7b7b; }
 .gen-color:nth-child(5) { background-color: #5f5f5f; }
 
-/* ================================
-   Hex Code + Copy Icon Wrapper
-   ================================ */
+/* Hex Code & Copy Icon Wrapper */
 .hex-wrapper {
   display: flex;
   align-items: center;
@@ -494,9 +519,7 @@ body {
   cursor: pointer;
 }
 
-/* ================================
-   Loading Shimmer Effect
-   ================================ */
+/* Loading States */
 .gen-color.loading {
   position: relative;
   overflow: hidden;
@@ -518,25 +541,59 @@ body {
   animation: shimmer 1.5s infinite;
 }
 
+/* ================================
+   Animations & Keyframes
+   ================================ */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes smoothDropAndReturn {
+  0%   { transform: translateY(0); opacity: 1; }
+  30%  { transform: translateY(60px); opacity: 0; }
+  50%  { transform: translateY(-40px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
 @keyframes shimmer {
   100% { left: 100%; }
 }
 
 /* ================================
-   Mobile Responsive Styles
+   Responsive Styles
    ================================ */
-@media (max-width: 768px) {
 
+/* Tablet & Small Desktop */
+@media (max-width: 768px) {
   .navbar {
-    flex-direction: column;
-    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    height: 12vh;
     padding: 10px;
   }
 
+  #principalTooltip {
+    visibility: hidden;
+  }
+
   .logo-wrapper {
-    width: 100%;
+    width: auto;
     justify-content: center;
     padding: 0;
+  }
+
+  .user-menu {
+    margin-left: auto;
   }
 
   .logo-text {
@@ -549,7 +606,7 @@ body {
 
   .toolbar {
     flex-direction: column;
-    height: auto;
+    height: 12.5vh;
     padding: 10px 0;
     gap: 10px;
   }
@@ -566,18 +623,52 @@ body {
   }
 
   .toolbar-function {
+    position: relative;
     font-size: 1.6rem;
   }
 
+  #favorites-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .favorites-dropdown-wrapper {
+    position: relative;
+    width: 80%;
+  }
+
+  .favorites-dropdown {
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 0.5rem 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    display: none;
+    max-width: 90vw;
+    width: max-content;
+  }
+
+  .favorites-dropdown.show {
+    display: block;
+  }
+
   .palette {
+    flex: 1;
+    display: flex;
     flex-direction: column;
-    height: auto;
+    padding-bottom: 15vh;
+    box-sizing: border-box;
   }
 
   .gen-color {
     width: 100%;
-    height: 18vh;
-    font-size: 1.2rem;
+    flex: 1;
+    height: auto;
   }
 
   .hex-wrapper {
@@ -587,5 +678,164 @@ body {
 
   .copy-icon {
     font-size: 1.4rem;
+  }
+
+  /* Mobile Bottom Toolbar */
+  .toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 12vh;
+    background-color: var(--bg-color);
+    border-top: 1px solid var(--border-color);
+    padding: 12px 0;
+    z-index: 999;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto;
+  }
+
+  .toolbar-right {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  #favorites-wrapper,
+  .toolbar-functions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .generate {
+    order: 2;
+    width: 90%;
+    height: 48px;
+    font-size: 1.2rem;
+    margin: 0 auto env(safe-area-inset-bottom, 12px);
+  }
+
+  /* Flip the arrow when toolbar is at bottom */
+  #favorites-dropdown-toggle {
+    transform: rotate(180deg);
+  }
+
+  /* Fix for bottom toolbar - dropdown should go upwards */
+  .favorites-dropdown {
+    top: auto;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    max-width: calc(100vw - 40px);
+    width: max-content;
+    min-width: 280px;
+    
+    /* Mobile animation properties - roll up from bottom */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+    pointer-events: none;
+  }
+
+  .favorites-dropdown.show {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Mobile arrow rotation (overrides the above when toolbar is at bottom) */
+  #favorites-dropdown-toggle {
+    transform: rotate(180deg);
+  }
+  
+  #favorites-dropdown-toggle.rotated {
+    transform: rotate(0deg);
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .navbar {
+    height: 10vh;
+  }
+
+  .logo-text {
+    height: 32px;
+  }
+
+  .logo-drop {
+    height: 28px;
+  }
+
+  .logo-wrapper {
+    width: auto;
+    gap: 4px;
+    padding: 0;
+  }
+
+  .user-menu {
+    height: 48px;
+    padding: 0.15rem 0.35rem;
+    border: 4px solid transparent;
+    border-radius: 14px;
+  }
+
+  .profile-display {
+    padding: 0.25rem;
+    width: 38px;
+    justify-content: center;
+  }
+
+  #profileName {
+    display: none;
+  }
+
+  .fa-user {
+    font-size: 1rem;
+  }
+
+  .dropdown-menu {
+    position: fixed;
+    top: 70px;
+    width: 90vw;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%) translateY(-10px);
+  }
+
+  .dropdown-menu.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Mobile favorites dropdown improvements */
+  .favorites-dropdown {
+    max-width: calc(100vw - 20px);
+    min-width: 260px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .favorites-dropdown.show {
+    transform: translateX(-50%);
+  }
+
+  .gen-color {
+    width: 100%;
+    flex: 1;
+    height: 16vh;
+  }
+
+  .toolbar {
+    height: 12vh;
   }
 }
