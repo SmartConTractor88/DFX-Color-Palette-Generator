@@ -1,0 +1,11 @@
+type Palette = record {
+  title: text;
+  colors: vec text;
+};
+
+service : {
+  add_palette: (text, vec text) -> () ;
+  get_palettes: () -> (vec Palette) query;
+  delete_palette: (vec text) -> (bool);
+  update_palette_title: (vec text, text) -> (bool);
+}

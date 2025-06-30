@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@dfinity/auth-client@latest/dist/auth-client.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chroma-js@2.1.0/chroma.min.js"></script>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     />
     <title>Color Palette</title>
     <link rel="icon" type="image/png" href="./assets/HueHut_drop--_0oEjo1.png">
-    <script type="module" crossorigin src="./assets/index-CUqL87pa.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-F0vKoRQy.css">
+    <script type="module" crossorigin src="./assets/index-C9Fwdv3z.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DTvouvRR.css">
   </head>
   <body>
     <nav class="navbar">
@@ -41,6 +42,9 @@
           <div class="dropdown-divider"></div>
           <div class="dropdown-option disabled" id="logout">Sign Out</div>
         </div>
+        
+        <!-- User Menu Backdrop -->
+        <div id="user-menu-backdrop" class="user-menu-backdrop"></div>
       </div>
     </nav>
     
@@ -55,6 +59,7 @@
           <i id="favorites-dropdown-toggle" class="fas fa-chevron-down toolbar-function disabled" title="Show Favorites"></i>
 
           <!-- Dropdown window for favorites -->
+          <div id="favorites-backdrop" class="favorites-backdrop"></div>
           <div id="favorites-dropdown" class="favorites-dropdown">
             <div class="favorites-scroll-container">
               <p class="dropdown-placeholder">No favorites saved yet.</p>

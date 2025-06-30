@@ -31,11 +31,45 @@ function palettesMatch(p1, p2) {
 }
 
 // ================================
-// Palette Generation
+// Palette Management
 // ================================
-function generateRandomHexColor() {
-  const hex = Math.floor(Math.random() * 16777215).toString(16);
-  return "#" + hex.padStart(6, "0");
+let curatedPalettes = [];
+
+async function loadPalettes() {
+  try {
+    const res = await fetch('/palettes.json');
+    curatedPalettes = await res.json();
+  } catch (e) {
+    console.error("Failed to load palettes.json:", e);
+  }
+}
+
+function pickRandomPalette() {
+  if (!curatedPalettes.length) {
+    // fallback palette
+    return ['#eeeeee', '#d6d6d6', '#b7b7b7', '#7b7b7b', '#5f5f5f'];
+  }
+  const index = Math.floor(Math.random() * curatedPalettes.length);
+  return curatedPalettes[index].colors;
+}
+
+function mutateHexColor(hex) {
+  const [h, s, l] = chroma(hex).hsl();
+  const newH = (h + rand(-10, 10) + 360) % 360;
+  const newS = Math.min(1, Math.max(0, s + rand(-0.05, 0.05)));
+  const newL = Math.min(1, Math.max(0, l + rand(-0.05, 0.05)));
+  return chroma.hsl(newH, newS, newL).hex();
+}
+
+// ================================
+// Generate Palette
+// ================================
+function rand(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+function hslToHex(h, s, l) {
+  return chroma.hsl(h, s / 100, l / 100).hex();
 }
 
 function generatePalette() {
@@ -43,7 +77,18 @@ function generatePalette() {
     const colorDivs = document.querySelectorAll(".gen-color");
     colorDivs.forEach(div => div.classList.add("loading"));
 
-    const colors = Array.from({ length: 5 }, generateRandomHexColor);
+    let colors = pickRandomPalette();
+
+    // Mutate each color slightly for uniqueness
+    colors = colors.map(c => mutateHexColor(c));
+
+    // 40% chance to insert a near-black color
+    if (Math.random() < 0.4) {
+      const darkHue = rand(0, 360);
+      const darkColor = hslToHex(darkHue, rand(20, 40), rand(3, 8));
+      const replaceIndex = Math.floor(Math.random() * 5);
+      colors[replaceIndex] = darkColor;
+    }
 
     colors.forEach((color, i) => {
       const div = colorDivs[i];
@@ -53,7 +98,7 @@ function generatePalette() {
       div.innerHTML = "";
       div.style.backgroundColor = color;
 
-      const textColor = getTextColor(color);
+      const textColor = chroma(color).luminance() > 0.5 ? "#000" : "#fff";
       const wrapper = document.createElement("div");
       wrapper.className = "hex-wrapper";
 
@@ -88,11 +133,13 @@ function generatePalette() {
   }
 }
 
+
 // ================================
 // Toolbar Functionality (Copy, Download)
 // ================================
-document.getElementById("generate").addEventListener("click", () => {
+document.getElementById("generate").addEventListener("click", async () => {
   toggleLikeButton(false);
+  await loadPalettes();
   generatePalette();
 });
 
@@ -305,17 +352,23 @@ function updateFavoritesDropdown(palettes = []) {
 // ================================
 // Favorites Dropdown Toggle
 // ================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const favoritesToggle = document.getElementById("favorites-dropdown-toggle");
   const favoritesDropdown = document.getElementById("favorites-dropdown");
+  const favoritesBackdrop = document.getElementById("favorites-backdrop");
   const logoutButton = document.getElementById("logout");
 
-  if (favoritesToggle && favoritesDropdown) {
+  if (favoritesToggle && favoritesDropdown && favoritesBackdrop) {
     favoritesToggle.classList.remove("disabled");
     favoritesToggle.addEventListener("click", () => {
       favoritesDropdown.classList.remove("hidden");
       const isOpen = favoritesDropdown.classList.toggle("show");
-      
+      // Toggle backdrop
+      if (isOpen) {
+        favoritesBackdrop.classList.add("active");
+      } else {
+        favoritesBackdrop.classList.remove("active");
+      }
       // Rotate arrow based on dropdown state
       if (isOpen) {
         favoritesToggle.classList.add("rotated");
@@ -324,16 +377,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-
+  
+  await loadPalettes();
   generatePalette(); // Initial palette on load
 });
 
-
+// Hide dropdown and backdrop when clicking outside
+// (replace the previous document.addEventListener("click", ...) for closing dropdown)
 document.addEventListener("click", (e) => {
   const toggle = document.getElementById("favorites-dropdown-toggle");
   const dropdown = document.getElementById("favorites-dropdown");
+  const backdrop = document.getElementById("favorites-backdrop");
   if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
     dropdown.classList.remove("show");
+    // Hide backdrop
+    if (backdrop) backdrop.classList.remove("active");
     // Rotate arrow back when dropdown closes
     toggle.classList.remove("rotated");
   }
@@ -396,6 +454,7 @@ function toggleLikeButton(active) {
 // ================================
 const profileDisplay = document.getElementById("profileDisplay");
 const dropdownMenu = document.getElementById("dropdownMenu");
+const userMenuBackdrop = document.getElementById("user-menu-backdrop");
 const loginButton = document.getElementById("login-ii");
 const logoutButton = document.getElementById("logout");
 const profileName = document.getElementById("profileName");
@@ -407,8 +466,22 @@ let authClient;
 let userIsLoggedIn = false;
 
 profileDisplay.addEventListener("click", () => {
-  dropdownMenu.classList.toggle("show");
+  const isOpen = dropdownMenu.classList.toggle("show");
+  // Toggle backdrop
+  if (isOpen) {
+    userMenuBackdrop.classList.add("active");
+  } else {
+    userMenuBackdrop.classList.remove("active");
+  }
 });
+
+// Add click handler to backdrop to close dropdown
+if (userMenuBackdrop) {
+  userMenuBackdrop.addEventListener("click", () => {
+    dropdownMenu.classList.remove("show");
+    userMenuBackdrop.classList.remove("active");
+  });
+}
 
 document.addEventListener("click", (e) => {
   const logoutButton = document.getElementById("logout");
@@ -419,6 +492,8 @@ document.addEventListener("click", (e) => {
     !(logoutButton && logoutButton.contains(e.target)) // and not inside logout button
   ) {
     dropdownMenu.classList.remove("show");
+    // Hide backdrop
+    if (userMenuBackdrop) userMenuBackdrop.classList.remove("active");
   }
 });
 
@@ -446,7 +521,6 @@ async function initAuth() {
     fullPrincipalSpan.textContent = "";
     tooltip.style.display = "none";
     logoutButton.classList.add("disabled");
-    logoutButton.disabled = true; // <-- Native disable set
     updateFavoritesUI(false);
   }
 }
@@ -497,7 +571,6 @@ function updateIdentityDisplay(principal) {
   fullPrincipalSpan.textContent = principal;
   tooltip.style.display = "";
   logoutButton.classList.remove("disabled");
-  logoutButton.disabled = false; // <-- Native disable removed
   updateFavoritesUI(true);
   fetchFavoritesFromBackend();
 }

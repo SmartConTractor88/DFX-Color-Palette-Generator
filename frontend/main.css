@@ -45,7 +45,7 @@ body {
    ================================ */
 
 /* ================================
-   Navbar Component
+   Navbar Styles
    ================================ */
 .navbar {
   display: flex;
@@ -55,6 +55,8 @@ body {
   background-color: var(--bg-color);
   border: 1px solid var(--border-color);
   padding: 0 20px;
+  z-index: 1001;
+  position: relative;
 }
 
 /* Logo Section */
@@ -103,10 +105,6 @@ body {
   box-sizing: border-box;
 }
 
-.user-menu:active {
-  animation: pulse 200ms ease;
-}
-
 .profile-display {
   display: flex;
   position: relative;
@@ -114,6 +112,10 @@ body {
   gap: 0.4rem;
   padding: 0.5rem 0.75rem;
   border-radius: 16px;
+}
+
+.profile-display:active {
+  animation: pulse 200ms ease;
 }
 
 #profileName {
@@ -146,7 +148,7 @@ body {
   white-space: nowrap;
   font-size: 0.85rem;
   display: none;
-  z-index: 1001;
+  z-index: 1002;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   max-width: calc(100vw - 20px);
   overflow: hidden;
@@ -214,6 +216,7 @@ body {
 .dropdown-option.disabled {
   color: #aaa;
   cursor: default;
+  pointer-events: none;
 }
 
 .dropdown-divider {
@@ -229,7 +232,7 @@ body {
 }
 
 /* ================================
-   Toolbar Component
+   Toolbar Styles
    ================================ */
 .toolbar {
   display: flex;
@@ -475,7 +478,7 @@ body {
 }
 
 /* ================================
-   Palette Component
+   Palette
    ================================ */
 .palette {
   display: flex;
@@ -497,7 +500,7 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background-color 0.5s ease;
+  transition: background-color 0.3s ease;
 }
 
 /* Default grayscale colors as fallback */
@@ -641,20 +644,27 @@ body {
     position: absolute;
     bottom: 120%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(20px);
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 0.5rem 1rem;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     z-index: 1000;
-    display: none;
     max-width: 90vw;
     width: max-content;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+    pointer-events: none;
   }
 
   .favorites-dropdown.show {
     display: block;
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
   }
 
   .palette {
@@ -733,24 +743,20 @@ body {
   .favorites-dropdown {
     top: auto;
     bottom: 120%;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    max-width: calc(100vw - 40px);
+    left: 10px;
+    transform: translateY(20px);
+    max-width: calc(100vw - 20px);
     width: max-content;
-    min-width: 280px;
-    
+    min-width: 180px;
     /* Mobile animation properties - roll up from bottom */
     visibility: hidden;
     opacity: 0;
     transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
     pointer-events: none;
   }
-
+  
   .favorites-dropdown.show {
-    visibility: visible;
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-    pointer-events: auto;
+    transform: translateY(0);
   }
 
   /* Mobile arrow rotation (overrides the above when toolbar is at bottom) */
@@ -807,6 +813,7 @@ body {
   .dropdown-menu {
     position: fixed;
     top: 70px;
+    z-index: 1001;
     width: 90vw;
     left: 50%;
     right: auto;
@@ -819,14 +826,22 @@ body {
 
   /* Mobile favorites dropdown improvements */
   .favorites-dropdown {
+    top: auto;
+    bottom: 120%;
+    left: -65px;
+    transform: translateY(20px);
     max-width: calc(100vw - 20px);
-    min-width: 260px;
-    left: 50%;
-    transform: translateX(-50%);
+    width: max-content;
+    min-width: 180px;
+    /* Mobile animation properties - roll up from bottom */
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.5s ease, visibility 0.5s ease;
+    pointer-events: none;
   }
-
+  
   .favorites-dropdown.show {
-    transform: translateX(-50%);
+    transform: translateY(0);
   }
 
   .gen-color {
@@ -838,4 +853,50 @@ body {
   .toolbar {
     height: 12vh;
   }
+}
+
+/* ================================
+   Favorites Dropdown Backdrop
+   ================================ */
+.favorites-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(30, 30, 30, 0.25);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.favorites-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.favorites-dropdown {
+  z-index: 1000;
+}
+
+/* ================================
+   User Menu Dropdown Backdrop
+   ================================ */
+.user-menu-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(30, 30, 30, 0.25);
+  backdrop-filter: blur(4px);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.user-menu-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.dropdown-menu {
+  z-index: 1001;
 }
