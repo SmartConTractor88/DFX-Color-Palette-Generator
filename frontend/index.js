@@ -56,8 +56,8 @@ function pickRandomPalette() {
 function mutateHexColor(hex) {
   const [h, s, l] = chroma(hex).hsl();
   const newH = (h + rand(-10, 10) + 360) % 360;
-  const newS = Math.min(1, Math.max(0, s + rand(-0.05, 0.05)));
-  const newL = Math.min(1, Math.max(0, l + rand(-0.05, 0.05)));
+  const newS = Math.min(1, Math.max(0, s + rand(-0.10, 0.10)));
+  const newL = Math.min(1, Math.max(0, l + rand(-0.10, 0.10)));
   return chroma.hsl(newH, newS, newL).hex();
 }
 
@@ -141,6 +141,10 @@ document.getElementById("generate").addEventListener("click", async () => {
   toggleLikeButton(false);
   await loadPalettes();
   generatePalette();
+  // Check if the generated palette matches any favorites
+  setTimeout(() => {
+    fetchFavoritesFromBackend();
+  }, 100);
 });
 
 document.getElementById("copy-all").addEventListener("click", () => {
@@ -311,17 +315,61 @@ function updateFavoritesDropdown(palettes = []) {
     const actions = document.createElement("div");
     actions.className = "favorite-actions";
 
-    const copyIcon = document.createElement("i");
-    copyIcon.className = "fas fa-copy copy-favorite";
-    copyIcon.title = "Copy Palette";
-    copyIcon.onclick = () => {
-      const hexList = palette.colors.join(", ");
-      navigator.clipboard.writeText(hexList).then(() => {
-        copyIcon.classList.replace("fa-copy", "fa-check");
-        setTimeout(() => {
-          copyIcon.classList.replace("fa-check", "fa-copy");
-        }, 1000);
+    const expandIcon = document.createElement("i");
+    expandIcon.className = "fas fa-expand expand-favorite";
+    expandIcon.title = "Load Palette";
+    expandIcon.onclick = () => {
+      // Load the palette onto the main color divs
+      const colorDivs = document.querySelectorAll(".gen-color");
+      palette.colors.forEach((color, i) => {
+        const div = colorDivs[i];
+        if (!div) return;
+
+        div.innerHTML = "";
+        div.style.backgroundColor = color;
+
+        const textColor = chroma(color).luminance() > 0.5 ? "#000" : "#fff";
+        const wrapper = document.createElement("div");
+        wrapper.className = "hex-wrapper";
+
+        const hexText = document.createElement("span");
+        hexText.className = "hex-code";
+        hexText.innerText = color;
+        hexText.style.color = textColor;
+
+        const copyIcon = document.createElement("i");
+        copyIcon.className = "fas fa-copy copy-icon";
+        copyIcon.style.color = textColor;
+        copyIcon.title = "Copy to clipboard";
+
+        copyIcon.onclick = () => {
+          navigator.clipboard.writeText(color).then(() => {
+            copyIcon.classList.replace("fa-copy", "fa-check");
+            setTimeout(() => {
+              copyIcon.classList.replace("fa-check", "fa-copy");
+            }, 1000);
+          });
+        };
+
+        wrapper.appendChild(hexText);
+        wrapper.appendChild(copyIcon);
+        div.appendChild(wrapper);
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.justifyContent = "center";
       });
+
+      // Collapse the dropdown
+      const dropdown = document.getElementById("favorites-dropdown");
+      const backdrop = document.getElementById("favorites-backdrop");
+      const toggle = document.getElementById("favorites-dropdown-toggle");
+      
+      dropdown.classList.remove("show");
+      if (backdrop) backdrop.classList.remove("active");
+      toggle.classList.remove("rotated");
+
+      // Activate the like button since a favorite palette is now loaded
+      toggleLikeButton(true);
     };
 
     const deleteIcon = document.createElement("i");
@@ -337,7 +385,7 @@ function updateFavoritesDropdown(palettes = []) {
       }
     };
 
-    actions.appendChild(copyIcon);
+    actions.appendChild(expandIcon);
     actions.appendChild(deleteIcon);
 
     item.appendChild(title);

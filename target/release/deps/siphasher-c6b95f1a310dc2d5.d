@@ -1,0 +1,10 @@
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/siphasher-c6b95f1a310dc2d5.d: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/libsiphasher-c6b95f1a310dc2d5.rlib: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/libsiphasher-c6b95f1a310dc2d5.rmeta: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md
+
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/lib.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/sip128.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/siphasher-1.0.1/src/../README.md:

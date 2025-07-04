@@ -1,0 +1,10 @@
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/stacker-2cf99bbb0a9b9e63.d: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/mod.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/unix.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/mmap_stack_restore_guard.rs
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/libstacker-2cf99bbb0a9b9e63.rlib: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/mod.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/unix.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/mmap_stack_restore_guard.rs
+
+/home/smart_con_tractor/canisters/color_palette_generator/target/release/deps/libstacker-2cf99bbb0a9b9e63.rmeta: /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/lib.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/mod.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/unix.rs /home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/mmap_stack_restore_guard.rs
+
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/lib.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/mod.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/backends/unix.rs:
+/home/smart_con_tractor/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/stacker-0.1.21/src/mmap_stack_restore_guard.rs:

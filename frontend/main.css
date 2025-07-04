@@ -466,14 +466,14 @@ body {
   color: #111;
 }
 
-.copy-favorite {
+.expand-favorite {
   font-size: 1rem;
   color: #666;
   cursor: pointer;
   transition: color 0.2s ease;
 }
 
-.copy-favorite:hover {
+.expand-favorite:hover {
   color: #111;
 }
 
