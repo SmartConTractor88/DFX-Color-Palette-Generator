@@ -6,6 +6,289 @@ import { AuthClient } from "@dfinity/auth-client";
 import html2canvas from 'html2canvas';
 
 // ================================
+// Drag and Drop System
+// ================================
+let dragState = {
+  isDragging: false,
+  draggedElement: null,
+  dragClone: null,
+  startX: 0,
+  startY: 0,
+  originalIndex: 0,
+  currentIndex: 0,
+  paletteRect: null,
+  offsetX: 0,
+  offsetY: 0,
+  originalTop: 0,
+  originalLeft: 0,
+  elementHeight: 0,
+  elementWidth: 0,
+  verticalMode: false
+};
+
+function initDragAndDrop() {
+  const palette = document.querySelector('.palette');
+  const colorDivs = document.querySelectorAll('.gen-color');
+  
+  colorDivs.forEach((div, index) => {
+    const dragIcon = div.querySelector('.fa-left-right');
+    if (dragIcon) {
+      dragIcon.style.cursor = 'grab';
+      dragIcon.title = 'Drag to reorder';
+      
+      dragIcon.onmousedown = null;
+      dragIcon.onmouseenter = null;
+      dragIcon.onmouseleave = null;
+      
+      dragIcon.addEventListener('mousedown', (e) => startDrag(e, div, index));
+      dragIcon.addEventListener('mouseenter', () => {
+        if (!dragState.isDragging) {
+          dragIcon.style.cursor = 'grabbing';
+        }
+      });
+      dragIcon.addEventListener('mouseleave', () => {
+        if (!dragState.isDragging) {
+          dragIcon.style.cursor = 'grab';
+        }
+      });
+    }
+  });
+  
+  document.addEventListener('mousemove', handleDrag);
+  document.addEventListener('mouseup', endDrag);
+}
+
+function isVerticalMode() {
+  return window.innerWidth <= 768;
+}
+
+function startDrag(e, element, index) {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  dragState.isDragging = true;
+  dragState.draggedElement = element;
+  dragState.originalIndex = index;
+  dragState.currentIndex = index;
+  dragState.startX = e.clientX;
+  dragState.startY = e.clientY;
+  
+  const palette = document.querySelector('.palette');
+  dragState.paletteRect = palette.getBoundingClientRect();
+
+  const rect = element.getBoundingClientRect();
+  dragState.offsetX = e.clientX - rect.left;
+  dragState.offsetY = e.clientY - rect.top;
+  dragState.originalTop = rect.top;
+  dragState.originalLeft = rect.left;
+  dragState.elementHeight = rect.height;
+  dragState.elementWidth = rect.width;
+  dragState.verticalMode = isVerticalMode();
+  
+  createDragClone(element, rect);
+  
+  element.style.opacity = '0';
+  element.style.transition = 'opacity 0.2s ease';
+  
+  const dragIcon = element.querySelector('.fa-left-right');
+  if (dragIcon) {
+    dragIcon.style.cursor = 'grabbing';
+  }
+  
+  document.body.style.userSelect = 'none';
+}
+
+function createDragClone(element, rect) {
+  const clone = element.cloneNode(true);
+  clone.style.position = 'fixed';
+  clone.style.top = rect.top + 'px';
+  clone.style.left = rect.left + 'px';
+  clone.style.width = rect.width + 'px';
+  clone.style.height = rect.height + 'px';
+  clone.style.zIndex = '1000';
+  clone.style.pointerEvents = 'none';
+  clone.style.opacity = '1';
+  clone.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
+  clone.style.transition = 'none';
+  clone.style.transform = 'none';
+  
+  if (dragState.dragClone) {
+    dragState.dragClone.remove();
+  }
+  
+  dragState.dragClone = clone;
+  document.body.appendChild(clone);
+}
+
+function handleDrag(e) {
+  if (!dragState.isDragging || !dragState.dragClone) return;
+  
+  requestAnimationFrame(() => {
+    if (dragState.verticalMode) {
+      const y = e.clientY - dragState.offsetY;
+      dragState.dragClone.style.top = y + 'px';
+      dragState.dragClone.style.left = dragState.originalLeft + 'px';
+      dragState.dragClone.style.transform = 'none';
+      const newIndex = calculateNewIndexVertical(e.clientY);
+      if (newIndex !== dragState.currentIndex) {
+        dragState.currentIndex = newIndex;
+        updateVisualOrder();
+      }
+    } else {
+      const x = e.clientX - dragState.offsetX;
+      dragState.dragClone.style.left = x + 'px';
+      dragState.dragClone.style.top = dragState.originalTop + 'px';
+      dragState.dragClone.style.transform = 'none';
+      const newIndex = calculateNewIndex(e.clientX);
+      if (newIndex !== dragState.currentIndex) {
+        dragState.currentIndex = newIndex;
+        updateVisualOrder();
+      }
+    }
+  });
+}
+
+function calculateNewIndex(mouseX) {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  const paletteLeft = dragState.paletteRect.left;
+  const paletteWidth = dragState.paletteRect.width;
+  const colorWidth = paletteWidth / 5; // 20% each
+  
+  const relativeX = mouseX - paletteLeft;
+  const newIndex = Math.floor(relativeX / colorWidth);
+  
+  return Math.max(0, Math.min(4, newIndex));
+}
+
+function calculateNewIndexVertical(mouseY) {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  const paletteTop = dragState.paletteRect.top;
+  const paletteHeight = dragState.paletteRect.height;
+  const colorHeight = paletteHeight / 5;
+  const relativeY = mouseY - paletteTop;
+  const newIndex = Math.floor(relativeY / colorHeight);
+  return Math.max(0, Math.min(4, newIndex));
+}
+
+function updateVisualOrder() {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  if (dragState.verticalMode) {
+    const colorHeight = 100; // percent
+    colorDivs.forEach((div, index) => {
+      if (index === dragState.originalIndex) {
+        div.style.transform = 'translateY(0)';
+      } else if (dragState.currentIndex > dragState.originalIndex) {
+        if (index > dragState.originalIndex && index <= dragState.currentIndex) {
+          div.style.transform = `translateY(-${colorHeight}%)`;
+        } else {
+          div.style.transform = 'translateY(0)';
+        }
+      } else if (dragState.currentIndex < dragState.originalIndex) {
+        if (index >= dragState.currentIndex && index < dragState.originalIndex) {
+          div.style.transform = `translateY(${colorHeight}%)`;
+        } else {
+          div.style.transform = 'translateY(0)';
+        }
+      }
+    });
+  } else {
+    const colorWidth = 20; // percent
+    colorDivs.forEach((div, index) => {
+      if (index === dragState.originalIndex) {
+        div.style.transform = 'translateX(0)';
+      } else if (dragState.currentIndex > dragState.originalIndex) {
+        if (index > dragState.originalIndex && index <= dragState.currentIndex) {
+          div.style.transform = `translateX(-${colorWidth}%)`;
+        } else {
+          div.style.transform = 'translateX(0)';
+        }
+      } else if (dragState.currentIndex < dragState.originalIndex) {
+        if (index >= dragState.currentIndex && index < dragState.originalIndex) {
+          div.style.transform = `translateX(${colorWidth}%)`;
+        } else {
+          div.style.transform = 'translateX(0)';
+        }
+      }
+    });
+  }
+}
+
+function endDrag(e) {
+  if (!dragState.isDragging) return;
+  
+  if (dragState.currentIndex !== dragState.originalIndex) {
+    reorderDOM();
+  }
+  
+  cleanupDrag();
+}
+
+function reorderDOM() {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  const palette = document.querySelector('.palette');
+  
+  const elements = Array.from(colorDivs);
+  const draggedElement = elements[dragState.originalIndex];
+  
+  elements.splice(dragState.originalIndex, 1);
+  
+  elements.splice(dragState.currentIndex, 0, draggedElement);
+  
+  palette.innerHTML = '';
+  elements.forEach(element => {
+    palette.appendChild(element);
+  });
+  
+  setTimeout(() => {
+    initDragAndDrop();
+  }, 10);
+}
+
+function cleanupDrag() {
+  if (dragState.dragClone) {
+    dragState.dragClone.remove();
+    dragState.dragClone = null;
+  }
+  
+  if (dragState.draggedElement) {
+    dragState.draggedElement.style.opacity = '1';
+    dragState.draggedElement.style.transform = 'translateX(0)';
+    dragState.draggedElement.style.transition = 'opacity 0.2s ease, transform 0.3s ease';
+    
+    const dragIcon = dragState.draggedElement.querySelector('.fa-left-right');
+    if (dragIcon) {
+      dragIcon.style.cursor = 'grab';
+    }
+  }
+  
+  const colorDivs = document.querySelectorAll('.gen-color');
+  colorDivs.forEach(div => {
+    div.style.transform = 'translateX(0)';
+    div.style.transition = 'transform 0.3s ease';
+  });
+  
+  dragState = {
+    isDragging: false,
+    draggedElement: null,
+    dragClone: null,
+    startX: 0,
+    startY: 0,
+    originalIndex: 0,
+    currentIndex: 0,
+    paletteRect: null,
+    offsetX: 0,
+    offsetY: 0,
+    originalTop: 0,
+    originalLeft: 0,
+    elementHeight: 0,
+    elementWidth: 0,
+    verticalMode: false
+  };
+  
+  document.body.style.userSelect = '';
+}
+
+// ================================
 // Utility Functions
 // ================================
 function getTextColor(hex) {
@@ -14,20 +297,6 @@ function getTextColor(hex) {
   const b = parseInt(hex.slice(5, 7), 16);
   const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   return brightness > 128 ? "#000000" : "#FFFFFF";
-}
-
-function getCurrentPaletteColors() {
-  const paletteDivs = document.querySelectorAll(".gen-color");
-  return Array.from(paletteDivs).map(div => {
-    const hexSpan = div.querySelector(".hex-code");
-    return hexSpan ? hexSpan.innerText : null;
-  }).filter(Boolean);
-}
-
-function palettesMatch(p1, p2) {
-  if (!Array.isArray(p1) || !Array.isArray(p2)) return false;
-  if (p1.length !== p2.length) return false;
-  return p1.every((val, index) => val === p2[index]);
 }
 
 // ================================
@@ -46,7 +315,6 @@ async function loadPalettes() {
 
 function pickRandomPalette() {
   if (!curatedPalettes.length) {
-    // fallback palette
     return ['#eeeeee', '#d6d6d6', '#b7b7b7', '#7b7b7b', '#5f5f5f'];
   }
   const index = Math.floor(Math.random() * curatedPalettes.length);
@@ -78,11 +346,7 @@ function generatePalette() {
     colorDivs.forEach(div => div.classList.add("loading"));
 
     let colors = pickRandomPalette();
-
-    // Mutate each color slightly for uniqueness
     colors = colors.map(c => mutateHexColor(c));
-
-    // 40% chance to insert a near-black color
     if (Math.random() < 0.4) {
       const darkHue = rand(0, 360);
       const darkColor = hslToHex(darkHue, rand(20, 40), rand(3, 8));
@@ -101,17 +365,19 @@ function generatePalette() {
       const textColor = chroma(color).luminance() > 0.5 ? "#000" : "#fff";
       const wrapper = document.createElement("div");
       wrapper.className = "hex-wrapper";
+      wrapper.style.display = "flex";
+      wrapper.style.alignItems = "center";
+      wrapper.style.gap = "6px";
 
       const hexText = document.createElement("span");
       hexText.className = "hex-code";
-      hexText.innerText = color;
+      hexText.innerText = color.replace(/^#/, "");
       hexText.style.color = textColor;
 
       const copyIcon = document.createElement("i");
       copyIcon.className = "fas fa-copy copy-icon";
       copyIcon.style.color = textColor;
       copyIcon.title = "Copy to clipboard";
-
       copyIcon.onclick = () => {
         navigator.clipboard.writeText(color).then(() => {
           copyIcon.classList.replace("fa-copy", "fa-check");
@@ -121,18 +387,37 @@ function generatePalette() {
         });
       };
 
-      wrapper.appendChild(hexText);
-      wrapper.appendChild(copyIcon);
+      // Drag icon
+      const dragIcon = document.createElement("i");
+      dragIcon.className = "fa-solid fa-left-right";
+      dragIcon.style.color = textColor;
+      dragIcon.style.fontSize = "1.2rem";
+      dragIcon.title = "Drag to reorder";
+      dragIcon.style.cursor = 'grab';
+
+      // Place drag icon next to copy icon on mobile, below on desktop
+      if (isVerticalMode()) {
+        wrapper.appendChild(hexText);
+        wrapper.appendChild(copyIcon);
+        wrapper.appendChild(dragIcon);
+      } else {
+        wrapper.appendChild(hexText);
+        wrapper.appendChild(copyIcon);
+      }
       div.appendChild(wrapper);
+      if (!isVerticalMode()) {
+        div.appendChild(dragIcon);
+      }
       div.style.display = "flex";
+      div.style.flexDirection = "column";
       div.style.alignItems = "center";
       div.style.justifyContent = "center";
     });
+    initDragAndDrop();
   } catch (e) {
     console.error("Error generating palette:", e);
   }
 }
-
 
 // ================================
 // Toolbar Functionality (Copy, Download)
@@ -141,7 +426,6 @@ document.getElementById("generate").addEventListener("click", async () => {
   toggleLikeButton(false);
   await loadPalettes();
   generatePalette();
-  // Check if the generated palette matches any favorites
   setTimeout(() => {
     fetchFavoritesFromBackend();
   }, 100);
@@ -177,7 +461,11 @@ document.getElementById("download-png").addEventListener("click", () => {
 // Favorites Management
 // ================================
 async function addCurrentPaletteToFavorites() {
-  const paletteColors = getCurrentPaletteColors();
+  const colorDivs = document.querySelectorAll(".gen-color");
+  const paletteColors = Array.from(colorDivs, div => {
+    const hexSpan = div.querySelector(".hex-code");
+    return hexSpan ? ("#" + hexSpan.innerText) : null;
+  }).filter(Boolean);
   if (paletteColors.length === 0) {
     alert("No palette to save.");
     toggleLikeButton(false);
@@ -199,7 +487,11 @@ async function fetchFavoritesFromBackend() {
     const palettes = await backend.get_palettes();
     updateFavoritesDropdown(palettes);
 
-    const current = getCurrentPaletteColors();
+    const colorDivs = document.querySelectorAll(".gen-color");
+    const current = Array.from(colorDivs, div => {
+      const hexSpan = div.querySelector(".hex-code");
+      return hexSpan ? ("#" + hexSpan.innerText) : null;
+    }).filter(Boolean);
     const found = palettes.some(p => palettesMatch(p.colors, current));
     toggleLikeButton(found);
   } catch (err) {
@@ -207,17 +499,24 @@ async function fetchFavoritesFromBackend() {
   }
 }
 
+function palettesMatch(p1, p2) {
+  if (!Array.isArray(p1) || !Array.isArray(p2)) return false;
+  if (p1.length !== p2.length) return false;
+  return p1.every((val, index) => val === p2[index]);
+}
+
 function updateFavoritesDropdown(palettes = []) {
   const dropdown = document.getElementById("favorites-dropdown");
   const scrollContainer = dropdown.querySelector(".favorites-scroll-container");
+  if (!scrollContainer) {
+    console.error("favorites-scroll-container not found in DOM!");
+    return;
+  }
 
-  // Clear the scrollable content area
   scrollContainer.innerHTML = "";
 
-  // Clear and rebuild the header
   dropdown.querySelectorAll(".favorites-header").forEach(header => header.remove());
 
-  // Create dropdown header
   const header = document.createElement("div");
   header.className = "favorites-header";
 
@@ -230,37 +529,32 @@ function updateFavoritesDropdown(palettes = []) {
   deleteAllIcon.title = "Delete All Favorites";
 
   deleteAllIcon.onclick = async () => {
-    if (!confirm("Are you sure you want to delete all favorite palettes?")) return;
-
     const items = scrollContainer.querySelectorAll(".favorite-item");
-
     items.forEach((item, i) => {
       setTimeout(() => {
         item.classList.add("fade-out");
       }, i * 80);
     });
 
-    const totalDelay = items.length * 80 + 300;
-
-    setTimeout(() => {
-      dropdown.classList.add("closing");
-    }, totalDelay);
-
-    setTimeout(() => {
-      dropdown.classList.remove("closing");
-      toggleLikeButton(false);
-    }, totalDelay + 300);
-
+    toggleLikeButton(false);
 
     try {
       const palettes = await backend.get_palettes();
       for (const p of palettes) {
         await backend.delete_palette(p.colors);
       }
-      fetchFavoritesFromBackend();
-      setTimeout(() => toggleLikeButton(false), 100);
+      setTimeout(() => {
+        const dropdown = document.getElementById("favorites-dropdown");
+        const backdrop = document.getElementById("favorites-backdrop");
+        const toggle = document.getElementById("favorites-dropdown-toggle");
+        dropdown.classList.remove("show");
+        if (backdrop) backdrop.classList.remove("active");
+        toggle.classList.remove("rotated");
+        fetchFavoritesFromBackend();
+      }, 500);
     } catch (err) {
-      alert("Failed to delete all favorites.");
+      console.error("Delete all error:", err);
+      alert("Failed to delete all favorites: " + err.message);
     }
   };
 
@@ -268,13 +562,11 @@ function updateFavoritesDropdown(palettes = []) {
   header.appendChild(deleteAllIcon);
   dropdown.insertBefore(header, scrollContainer);
 
-  // Show placeholder if empty
   if (palettes.length === 0) {
     scrollContainer.innerHTML = '<p class="dropdown-placeholder">No favorites saved yet.</p>';
     return;
   }
 
-  // Build and insert favorite items
   palettes.forEach((palette) => {
     const item = document.createElement("div");
     item.className = "favorite-item";
@@ -305,11 +597,12 @@ function updateFavoritesDropdown(palettes = []) {
     const preview = document.createElement("div");
     preview.className = "color-preview";
 
-    palette.colors.forEach(color => {
-      const box = document.createElement("div");
-      box.className = "color-box";
-      box.style.backgroundColor = color;
-      preview.appendChild(box);
+    palette.colors.forEach((color, i) => {
+      const colorDiv = document.createElement("div");
+      colorDiv.className = "color-box";
+      colorDiv.style.backgroundColor = color;
+      colorDiv.title = color;
+      preview.appendChild(colorDiv);
     });
 
     const actions = document.createElement("div");
@@ -319,29 +612,26 @@ function updateFavoritesDropdown(palettes = []) {
     expandIcon.className = "fas fa-expand expand-favorite";
     expandIcon.title = "Load Palette";
     expandIcon.onclick = () => {
-      // Load the palette onto the main color divs
       const colorDivs = document.querySelectorAll(".gen-color");
       palette.colors.forEach((color, i) => {
         const div = colorDivs[i];
         if (!div) return;
-
         div.innerHTML = "";
         div.style.backgroundColor = color;
-
         const textColor = chroma(color).luminance() > 0.5 ? "#000" : "#fff";
         const wrapper = document.createElement("div");
         wrapper.className = "hex-wrapper";
-
+        wrapper.style.display = "flex";
+        wrapper.style.alignItems = "center";
+        wrapper.style.gap = "6px";
         const hexText = document.createElement("span");
         hexText.className = "hex-code";
-        hexText.innerText = color;
+        hexText.innerText = color.replace(/^#/, "");
         hexText.style.color = textColor;
-
         const copyIcon = document.createElement("i");
         copyIcon.className = "fas fa-copy copy-icon";
         copyIcon.style.color = textColor;
         copyIcon.title = "Copy to clipboard";
-
         copyIcon.onclick = () => {
           navigator.clipboard.writeText(color).then(() => {
             copyIcon.classList.replace("fa-copy", "fa-check");
@@ -350,26 +640,38 @@ function updateFavoritesDropdown(palettes = []) {
             }, 1000);
           });
         };
-
-        wrapper.appendChild(hexText);
-        wrapper.appendChild(copyIcon);
+        const dragIcon = document.createElement("i");
+        dragIcon.className = "fa-solid fa-left-right";
+        dragIcon.style.color = textColor;
+        dragIcon.style.fontSize = "1.2rem";
+        dragIcon.title = "Drag to reorder";
+        dragIcon.style.cursor = 'grab';
+        if (isVerticalMode()) {
+          wrapper.appendChild(hexText);
+          wrapper.appendChild(copyIcon);
+          wrapper.appendChild(dragIcon);
+        } else {
+          wrapper.appendChild(hexText);
+          wrapper.appendChild(copyIcon);
+        }
         div.appendChild(wrapper);
+        if (!isVerticalMode()) {
+          div.appendChild(dragIcon);
+        }
         div.style.display = "flex";
+        div.style.flexDirection = "column";
         div.style.alignItems = "center";
         div.style.justifyContent = "center";
       });
-
-      // Collapse the dropdown
       const dropdown = document.getElementById("favorites-dropdown");
       const backdrop = document.getElementById("favorites-backdrop");
       const toggle = document.getElementById("favorites-dropdown-toggle");
-      
       dropdown.classList.remove("show");
       if (backdrop) backdrop.classList.remove("active");
       toggle.classList.remove("rotated");
-
-      // Activate the like button since a favorite palette is now loaded
       toggleLikeButton(true);
+      
+      initDragAndDrop();
     };
 
     const deleteIcon = document.createElement("i");
@@ -379,7 +681,6 @@ function updateFavoritesDropdown(palettes = []) {
       try {
         await backend.delete_palette(palette.colors);
         fetchFavoritesFromBackend();
-        toggleLikeButton(false);
       } catch (err) {
         alert("Failed to delete palette.");
       }
@@ -394,8 +695,13 @@ function updateFavoritesDropdown(palettes = []) {
 
     scrollContainer.appendChild(item);
   });
-}
 
+  // Fallback: if nothing was rendered, show placeholder
+  if (!scrollContainer.hasChildNodes()) {
+    scrollContainer.innerHTML = '<p class="dropdown-placeholder">No favorites saved yet.</p>';
+    console.warn("No favorites rendered, showing placeholder.");
+  }
+}
 
 // ================================
 // Favorites Dropdown Toggle
@@ -411,13 +717,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     favoritesToggle.addEventListener("click", () => {
       favoritesDropdown.classList.remove("hidden");
       const isOpen = favoritesDropdown.classList.toggle("show");
-      // Toggle backdrop
       if (isOpen) {
         favoritesBackdrop.classList.add("active");
       } else {
         favoritesBackdrop.classList.remove("active");
       }
-      // Rotate arrow based on dropdown state
       if (isOpen) {
         favoritesToggle.classList.add("rotated");
       } else {
@@ -425,22 +729,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
-  
   await loadPalettes();
-  generatePalette(); // Initial palette on load
+  generatePalette();
 });
 
-// Hide dropdown and backdrop when clicking outside
-// (replace the previous document.addEventListener("click", ...) for closing dropdown)
 document.addEventListener("click", (e) => {
   const toggle = document.getElementById("favorites-dropdown-toggle");
   const dropdown = document.getElementById("favorites-dropdown");
   const backdrop = document.getElementById("favorites-backdrop");
   if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
     dropdown.classList.remove("show");
-    // Hide backdrop
     if (backdrop) backdrop.classList.remove("active");
-    // Rotate arrow back when dropdown closes
     toggle.classList.remove("rotated");
   }
 });
@@ -457,7 +756,11 @@ likeButton.addEventListener("click", async () => {
     return;
   }
 
-  const paletteColors = getCurrentPaletteColors();
+  const colorDivs = document.querySelectorAll(".gen-color");
+  const paletteColors = Array.from(colorDivs, div => {
+    const hexSpan = div.querySelector(".hex-code");
+    return hexSpan ? ("#" + hexSpan.innerText) : null;
+  }).filter(Boolean);
   if (paletteColors.length === 0) return;
 
   const isLiked = likeButton.classList.contains("fas");
@@ -515,7 +818,6 @@ let userIsLoggedIn = false;
 
 profileDisplay.addEventListener("click", () => {
   const isOpen = dropdownMenu.classList.toggle("show");
-  // Toggle backdrop
   if (isOpen) {
     userMenuBackdrop.classList.add("active");
   } else {
@@ -523,7 +825,6 @@ profileDisplay.addEventListener("click", () => {
   }
 });
 
-// Add click handler to backdrop to close dropdown
 if (userMenuBackdrop) {
   userMenuBackdrop.addEventListener("click", () => {
     dropdownMenu.classList.remove("show");
@@ -536,11 +837,10 @@ document.addEventListener("click", (e) => {
   const userMenu = document.querySelector(".user-menu");
 
   if (
-    !userMenu.contains(e.target) &&  // click outside user menu
-    !(logoutButton && logoutButton.contains(e.target)) // and not inside logout button
+    !userMenu.contains(e.target) &&
+    !(logoutButton && logoutButton.contains(e.target))
   ) {
     dropdownMenu.classList.remove("show");
-    // Hide backdrop
     if (userMenuBackdrop) userMenuBackdrop.classList.remove("active");
   }
 });
@@ -586,7 +886,6 @@ loginButton.addEventListener("click", async () => {
   });
 });
 
-// Attach logout event listener only if logoutButton exists
 if (logoutButton) {
   logoutButton.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -642,11 +941,10 @@ function updateFavoritesUI(isLoggedIn) {
   }
 }
 
-// Tooltip hover logic
-const profileWrapper = document.querySelector('.profile-display-wrapper');
-
 let tooltipHideTimeout = null;
 let tooltipJustOpened = false;
+
+const profileWrapper = document.querySelector('.profile-display-wrapper');
 
 profileWrapper.addEventListener("mouseenter", () => {
   if (userIsLoggedIn) {
@@ -691,7 +989,12 @@ function hideTooltip() {
   tooltipJustOpened = false;
 }
 
-// ================================
-// Init
-// ================================
 initAuth();
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    generatePalette();
+  });
+} else {
+  generatePalette();
+}
