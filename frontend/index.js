@@ -36,10 +36,13 @@ function initDragAndDrop() {
       dragIcon.style.cursor = 'grab';
       dragIcon.title = 'Drag to reorder';
       
+      // Clear existing event listeners
       dragIcon.onmousedown = null;
       dragIcon.onmouseenter = null;
       dragIcon.onmouseleave = null;
+      dragIcon.ontouchstart = null;
       
+      // Mouse events for desktop
       dragIcon.addEventListener('mousedown', (e) => startDrag(e, div, index));
       dragIcon.addEventListener('mouseenter', () => {
         if (!dragState.isDragging) {
@@ -51,12 +54,70 @@ function initDragAndDrop() {
           dragIcon.style.cursor = 'grab';
         }
       });
+      
+      // Touch events for mobile - simplified approach
+      dragIcon.addEventListener('touchstart', (e) => {
+        // Simple touch handling without preventDefault
+        if (e && e.touches && e.touches[0]) {
+          const touch = e.touches[0];
+          // Create a synthetic mouse event for compatibility
+          const mouseEvent = {
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            preventDefault: () => {},
+            stopPropagation: () => {}
+          };
+          startDrag(mouseEvent, div, index);
+        }
+      });
     }
   });
   
+  // Mouse events for desktop
   document.addEventListener('mousemove', handleDrag);
   document.addEventListener('mouseup', endDrag);
+  
+  // Touch events for mobile - simplified approach
+  document.addEventListener('touchmove', (e) => {
+    // Only handle if we're actually dragging
+    if (dragState.isDragging && e && e.touches && e.touches[0]) {
+      const touch = e.touches[0];
+      // Create a synthetic mouse event for compatibility
+      const mouseEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        preventDefault: () => {}
+      };
+      handleDrag(mouseEvent);
+    }
+  });
+  
+  document.addEventListener('touchend', (e) => {
+    // Only handle if we're actually dragging
+    if (dragState.isDragging && e && e.changedTouches && e.changedTouches[0]) {
+      const touch = e.changedTouches[0];
+      // Create a synthetic mouse event for compatibility
+      const mouseEvent = {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        preventDefault: () => {}
+      };
+      endDrag(mouseEvent);
+    }
+  });
+  
+  // Ensure layout is correct after initialization
+  enforceGenColorLayout();
 }
+
+// Add window resize listener to update layout when browser size changes
+window.addEventListener('resize', () => {
+  // Debounce the resize event to avoid excessive calls
+  clearTimeout(window.resizeTimeout);
+  window.resizeTimeout = setTimeout(() => {
+    enforceGenColorLayout();
+  }, 100);
+});
 
 function isVerticalMode() {
   return window.innerWidth <= 768;
@@ -85,14 +146,27 @@ function startDrag(e, element, index) {
   dragState.elementWidth = rect.width;
   dragState.verticalMode = isVerticalMode();
   
+  // Always create drag clone for both modes
   createDragClone(element, rect);
   
+  // Always make the original element transparent (no ghost)
   element.style.opacity = '0';
   element.style.transition = 'opacity 0.2s ease';
+  element.style.pointerEvents = 'none';
   
+  // Hide icons during drag - only show hex code
+  const copyIcon = element.querySelector('.copy-icon');
   const dragIcon = element.querySelector('.fa-left-right');
+  if (copyIcon) copyIcon.style.opacity = '0';
   if (dragIcon) {
     dragIcon.style.cursor = 'grabbing';
+    dragIcon.style.opacity = '0';
+  }
+  
+  // Force hide icons on mobile/tablet by overriding CSS !important
+  if (window.innerWidth <= 768) {
+    if (copyIcon) copyIcon.style.setProperty('opacity', '0', 'important');
+    if (dragIcon) dragIcon.style.setProperty('opacity', '0', 'important');
   }
   
   document.body.style.userSelect = 'none';
@@ -108,9 +182,11 @@ function createDragClone(element, rect) {
   clone.style.zIndex = '1000';
   clone.style.pointerEvents = 'none';
   clone.style.opacity = '1';
-  clone.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
   clone.style.transition = 'none';
   clone.style.transform = 'none';
+  
+  // No shadow for any mode - cleaner look
+  // clone.style.boxShadow = '0 8px 25px rgba(0,0,0,0.3)';
   
   if (dragState.dragClone) {
     dragState.dragClone.remove();
@@ -120,30 +196,48 @@ function createDragClone(element, rect) {
   document.body.appendChild(clone);
 }
 
+function enforceGenColorLayout() {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  colorDivs.forEach(div => {
+    if (window.innerWidth <= 768) {
+      // Force mobile layout with !important to override any CSS
+      div.style.setProperty('display', 'flex', 'important');
+      div.style.setProperty('flex-direction', 'row', 'important');
+      div.style.setProperty('align-items', 'center', 'important');
+      div.style.setProperty('justify-content', 'space-between', 'important');
+      div.style.setProperty('padding', '0 12px', 'important');
+    } else {
+      // Desktop layout
+      div.style.setProperty('display', 'flex', 'important');
+      div.style.setProperty('flex-direction', 'column', 'important');
+      div.style.setProperty('align-items', 'center', 'important');
+      div.style.setProperty('justify-content', 'center', 'important');
+    }
+  });
+}
+
 function handleDrag(e) {
   if (!dragState.isDragging || !dragState.dragClone) return;
-  
+
   requestAnimationFrame(() => {
+    let newIndex;
     if (dragState.verticalMode) {
       const y = e.clientY - dragState.offsetY;
       dragState.dragClone.style.top = y + 'px';
       dragState.dragClone.style.left = dragState.originalLeft + 'px';
       dragState.dragClone.style.transform = 'none';
-      const newIndex = calculateNewIndexVertical(e.clientY);
-      if (newIndex !== dragState.currentIndex) {
-        dragState.currentIndex = newIndex;
-        updateVisualOrder();
-      }
+      newIndex = calculateNewIndexVertical(e.clientY);
     } else {
       const x = e.clientX - dragState.offsetX;
       dragState.dragClone.style.left = x + 'px';
       dragState.dragClone.style.top = dragState.originalTop + 'px';
       dragState.dragClone.style.transform = 'none';
-      const newIndex = calculateNewIndex(e.clientX);
-      if (newIndex !== dragState.currentIndex) {
-        dragState.currentIndex = newIndex;
-        updateVisualOrder();
-      }
+      newIndex = calculateNewIndex(e.clientX);
+    }
+
+    if (newIndex !== dragState.currentIndex) {
+      dragState.currentIndex = newIndex;
+      updateVisualOrder();
     }
   });
 }
@@ -175,6 +269,9 @@ function updateVisualOrder() {
   if (dragState.verticalMode) {
     const colorHeight = 100; // percent
     colorDivs.forEach((div, index) => {
+      // Add smooth transition for vertical mode
+      div.style.transition = 'transform 0.2s ease';
+      
       if (index === dragState.originalIndex) {
         div.style.transform = 'translateY(0)';
       } else if (dragState.currentIndex > dragState.originalIndex) {
@@ -192,8 +289,11 @@ function updateVisualOrder() {
       }
     });
   } else {
-    const colorWidth = 20; // percent
+    const colorWidth = 100; // percent (was 20, now 100 for full width slide)
     colorDivs.forEach((div, index) => {
+      // Add smooth transition for horizontal mode
+      div.style.transition = 'transform 0.2s ease';
+      
       if (index === dragState.originalIndex) {
         div.style.transform = 'translateX(0)';
       } else if (dragState.currentIndex > dragState.originalIndex) {
@@ -231,7 +331,6 @@ function reorderDOM() {
   const draggedElement = elements[dragState.originalIndex];
   
   elements.splice(dragState.originalIndex, 1);
-  
   elements.splice(dragState.currentIndex, 0, draggedElement);
   
   palette.innerHTML = '';
@@ -239,6 +338,8 @@ function reorderDOM() {
     palette.appendChild(element);
   });
   
+  // Immediately enforce layout, then reinitialize drag and drop
+  enforceGenColorLayout();
   setTimeout(() => {
     initDragAndDrop();
   }, 10);
@@ -251,21 +352,41 @@ function cleanupDrag() {
   }
   
   if (dragState.draggedElement) {
+    // Always restore opacity (no ghost in any mode)
     dragState.draggedElement.style.opacity = '1';
-    dragState.draggedElement.style.transform = 'translateX(0)';
-    dragState.draggedElement.style.transition = 'opacity 0.2s ease, transform 0.3s ease';
+    dragState.draggedElement.style.transition = 'opacity 0.2s ease';
+    dragState.draggedElement.style.pointerEvents = '';
     
-    const dragIcon = dragState.draggedElement.querySelector('.fa-left-right');
-    if (dragIcon) {
-      dragIcon.style.cursor = 'grab';
-    }
+      // Show icons again after drag
+  const copyIcon = dragState.draggedElement.querySelector('.copy-icon');
+  const dragIcon = dragState.draggedElement.querySelector('.fa-left-right');
+  if (copyIcon) copyIcon.style.opacity = '';
+  if (dragIcon) {
+    dragIcon.style.cursor = 'grab';
+    dragIcon.style.opacity = '';
   }
   
+  // Force show icons on mobile/tablet by overriding CSS !important
+  if (window.innerWidth <= 768) {
+    if (copyIcon) copyIcon.style.setProperty('opacity', '1', 'important');
+    if (dragIcon) dragIcon.style.setProperty('opacity', '1', 'important');
+  }
+  }
+  
+  // Reset all transforms and add smooth transitions
   const colorDivs = document.querySelectorAll('.gen-color');
   colorDivs.forEach(div => {
-    div.style.transform = 'translateX(0)';
-    div.style.transition = 'transform 0.3s ease';
+    if (dragState.verticalMode) {
+      div.style.transform = 'translateY(0)';
+      div.style.transition = 'transform 0.3s ease';
+    } else {
+      div.style.transform = 'translateX(0)';
+      div.style.transition = 'transform 0.3s ease';
+    }
   });
+  
+  // Ensure layout is correct after cleanup
+  enforceGenColorLayout();
   
   dragState = {
     isDragging: false,
@@ -379,7 +500,7 @@ function generatePalette() {
       copyIcon.style.color = textColor;
       copyIcon.title = "Copy to clipboard";
       copyIcon.onclick = () => {
-        navigator.clipboard.writeText(color).then(() => {
+        navigator.clipboard.writeText(color.toUpperCase()).then(() => {
           copyIcon.classList.replace("fa-copy", "fa-check");
           setTimeout(() => {
             copyIcon.classList.replace("fa-check", "fa-copy");
@@ -387,7 +508,6 @@ function generatePalette() {
         });
       };
 
-      // Drag icon
       const dragIcon = document.createElement("i");
       dragIcon.className = "fa-solid fa-left-right";
       dragIcon.style.color = textColor;
@@ -395,24 +515,28 @@ function generatePalette() {
       dragIcon.title = "Drag to reorder";
       dragIcon.style.cursor = 'grab';
 
-      // Place drag icon next to copy icon on mobile, below on desktop
-      if (isVerticalMode()) {
+      if (window.innerWidth <= 768) {
+        // On mobile/tablet, append directly to div for horizontal layout
+        div.appendChild(hexText);
+        div.appendChild(copyIcon);
+        div.appendChild(dragIcon);
+      } else {
+        // On desktop, use vertical wrapper
         wrapper.appendChild(hexText);
         wrapper.appendChild(copyIcon);
         wrapper.appendChild(dragIcon);
-      } else {
-        wrapper.appendChild(hexText);
-        wrapper.appendChild(copyIcon);
+        wrapper.style.flexDirection = "column";
+        wrapper.style.alignItems = "center";
+        wrapper.style.justifyContent = "center";
+        div.appendChild(wrapper);
       }
-      div.appendChild(wrapper);
-      if (!isVerticalMode()) {
-        div.appendChild(dragIcon);
-      }
-      div.style.display = "flex";
-      div.style.flexDirection = "column";
-      div.style.alignItems = "center";
-      div.style.justifyContent = "center";
+      // Remove these lines, layout is now handled by enforceGenColorLayout
+      //div.style.display = "flex";
+      //div.style.flexDirection = window.innerWidth <= 768 ? "row" : "column";
+      //div.style.alignItems = "center";
+      //div.style.justifyContent = window.innerWidth <= 768 ? "space-between" : "center";
     });
+    enforceGenColorLayout();
     initDragAndDrop();
   } catch (e) {
     console.error("Error generating palette:", e);
@@ -464,7 +588,7 @@ async function addCurrentPaletteToFavorites() {
   const colorDivs = document.querySelectorAll(".gen-color");
   const paletteColors = Array.from(colorDivs, div => {
     const hexSpan = div.querySelector(".hex-code");
-    return hexSpan ? ("#" + hexSpan.innerText) : null;
+    return hexSpan ? ("#" + hexSpan.innerText.toUpperCase()) : null;
   }).filter(Boolean);
   if (paletteColors.length === 0) {
     alert("No palette to save.");
@@ -490,7 +614,7 @@ async function fetchFavoritesFromBackend() {
     const colorDivs = document.querySelectorAll(".gen-color");
     const current = Array.from(colorDivs, div => {
       const hexSpan = div.querySelector(".hex-code");
-      return hexSpan ? ("#" + hexSpan.innerText) : null;
+      return hexSpan ? ("#" + hexSpan.innerText.toUpperCase()) : null;
     }).filter(Boolean);
     const found = palettes.some(p => palettesMatch(p.colors, current));
     toggleLikeButton(found);
@@ -502,7 +626,7 @@ async function fetchFavoritesFromBackend() {
 function palettesMatch(p1, p2) {
   if (!Array.isArray(p1) || !Array.isArray(p2)) return false;
   if (p1.length !== p2.length) return false;
-  return p1.every((val, index) => val === p2[index]);
+  return p1.every((val, index) => val.toUpperCase() === p2[index].toUpperCase());
 }
 
 function updateFavoritesDropdown(palettes = []) {
@@ -633,7 +757,7 @@ function updateFavoritesDropdown(palettes = []) {
         copyIcon.style.color = textColor;
         copyIcon.title = "Copy to clipboard";
         copyIcon.onclick = () => {
-          navigator.clipboard.writeText(color).then(() => {
+          navigator.clipboard.writeText(color.toUpperCase()).then(() => {
             copyIcon.classList.replace("fa-copy", "fa-check");
             setTimeout(() => {
               copyIcon.classList.replace("fa-check", "fa-copy");
@@ -646,20 +770,22 @@ function updateFavoritesDropdown(palettes = []) {
         dragIcon.style.fontSize = "1.2rem";
         dragIcon.title = "Drag to reorder";
         dragIcon.style.cursor = 'grab';
-        if (isVerticalMode()) {
-          wrapper.appendChild(hexText);
-          wrapper.appendChild(copyIcon);
-          wrapper.appendChild(dragIcon);
+
+        if (window.innerWidth <= 768) {
+          div.appendChild(hexText);
+          div.appendChild(copyIcon);
+          div.appendChild(dragIcon);
         } else {
           wrapper.appendChild(hexText);
           wrapper.appendChild(copyIcon);
-        }
-        div.appendChild(wrapper);
-        if (!isVerticalMode()) {
-          div.appendChild(dragIcon);
+          wrapper.appendChild(dragIcon);
+          wrapper.style.flexDirection = "column";
+          wrapper.style.alignItems = "center";
+          wrapper.style.justifyContent = "center";
+          div.appendChild(wrapper);
         }
         div.style.display = "flex";
-        div.style.flexDirection = "column";
+        div.style.flexDirection = window.innerWidth <= 768 ? "row" : "column";
         div.style.alignItems = "center";
         div.style.justifyContent = "center";
       });
@@ -759,7 +885,7 @@ likeButton.addEventListener("click", async () => {
   const colorDivs = document.querySelectorAll(".gen-color");
   const paletteColors = Array.from(colorDivs, div => {
     const hexSpan = div.querySelector(".hex-code");
-    return hexSpan ? ("#" + hexSpan.innerText) : null;
+    return hexSpan ? ("#" + hexSpan.innerText.toUpperCase()) : null;
   }).filter(Boolean);
   if (paletteColors.length === 0) return;
 
@@ -997,4 +1123,24 @@ if (document.readyState === 'loading') {
   });
 } else {
   generatePalette();
+}
+
+const generateBtn = document.getElementById("generate");
+if (generateBtn) {
+  generateBtn.addEventListener("click", function(e) {
+    // Remove any existing ripple
+    const oldRipple = this.querySelector('.ripple');
+    if (oldRipple) oldRipple.remove();
+
+    const rect = this.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    // Calculate click position relative to button
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    this.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove());
+  });
 }

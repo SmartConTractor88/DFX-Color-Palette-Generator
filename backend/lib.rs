@@ -19,6 +19,7 @@ thread_local! {
 #[update]
 fn add_palette(title: String, colors: Vec<String>) {
     let user = caller();
+    let colors: Vec<String> = colors.into_iter().map(|c| c.to_ascii_uppercase()).collect();
     STORE.with(|store| {
         let mut map = store.borrow_mut();
         let entry = map.entry(user).or_insert_with(Vec::new);
@@ -50,6 +51,7 @@ fn get_palettes() -> Vec<Palette> {
 #[update]
 fn delete_palette(colors: Vec<String>) -> bool {
     let user = caller();
+    let colors: Vec<String> = colors.into_iter().map(|c| c.to_ascii_uppercase()).collect();
     STORE.with(|store| {
         let mut map = store.borrow_mut();
         if let Some(palettes) = map.get_mut(&user) {
@@ -65,6 +67,7 @@ fn delete_palette(colors: Vec<String>) -> bool {
 fn update_palette_title(colors: Vec<String>, new_title: String) -> bool
 {
     let user = caller();
+    let colors: Vec<String> = colors.into_iter().map(|c| c.to_ascii_uppercase()).collect();
     STORE.with(|store| {
         let mut map = store.borrow_mut();
         if let Some(palettes) = map.get_mut(&user) {

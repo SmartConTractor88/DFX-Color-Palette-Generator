@@ -276,7 +276,34 @@ body {
 }
 
 .generate:active {
-  animation: pulse 200ms ease;
+  animation: none;
+}
+
+/* Ripple effect for .generate button (centered, 1.2s, does not affect content alignment) */
+.generate {
+  position: relative;
+  overflow: hidden;
+}
+.generate .ripple {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  background: #989898;
+  opacity: 0.5;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: rippleBtnEffect 1.0s linear;
+  z-index: 2;
+}
+@keyframes rippleBtnEffect {
+  to {
+    width: 400px;
+    height: 400px;
+    opacity: 0;
+  }
 }
 
 /* Toolbar Functions */
@@ -496,12 +523,12 @@ body {
 
 /* Color Boxes */
 .gen-color {
+  position: relative;
   display: flex;
+  align-items: center;
+  justify-content: flex-start;
   width: 20%;
   height: 100%;
-  align-items: center;
-  justify-content: center;
-  position: relative;
 }
 
 /* Default grayscale colors as fallback */
@@ -516,6 +543,35 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Add vertical spacing between elements in .gen-color */
+.gen-color .hex-code {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: block;
+  text-align: center;
+  margin: 0;
+}
+.gen-color .copy-icon {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 22px;
+  top: calc(50% + 22px);
+  display: block;
+  text-align: center;
+}
+.gen-color .fa-left-right {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 44px;
+  top: calc(50% + 44px);
+  display: block;
+  text-align: center;
 }
 
 .copy-icon {
@@ -750,6 +806,38 @@ body {
   .fa-left-right {
     transform: rotate(90deg);
   }
+
+  .gen-color {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    width: 100%;
+    height: 20%;
+    min-height: 0;
+    padding: 0 12px;
+  }
+  .gen-color .hex-code {
+    position: static;
+    transform: none;
+    margin: 0 0 0 8px;
+    text-align: left;
+    display: block;
+    flex: 1 1 auto;
+  }
+  .gen-color .copy-icon,
+  .gen-color .fa-left-right {
+    position: static;
+    transform: none;
+    margin: 0 8px 0 0;
+    text-align: right;
+    display: inline-block;
+    flex: 0 0 auto;
+    font-size: 1.4rem;
+    vertical-align: middle;
+    transition: none !important;
+  }
 }
 
 /* Mobile */
@@ -775,10 +863,73 @@ body {
     box-sizing: border-box;
   }
   .gen-color {
-    flex: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    width: 100%;
     height: 20%;
     min-height: 0;
-    width: 100%;
+    padding: 0 12px;
+  }
+  .gen-color .hex-code {
+    position: static;
+    transform: none;
+    margin: 0 0 0 6px;
+    text-align: left;
+    display: block;
+    flex: 1 1 auto;
+  }
+  .gen-color .copy-icon,
+  .gen-color .fa-left-right {
+    position: static;
+    transform: none;
+    margin: 0 0 0 12px;
+    text-align: right;
+    display: inline-block;
+    flex: 0 0 auto;
+    font-size: 1.4rem;
+    transition: none !important;
+  }
+  .profile-display #profileName {
+    display: none;
+  }
+}
+
+/* Desktop: hide icons by default, show on hover */
+@media (min-width: 481px) {
+  .gen-color .copy-icon,
+  .gen-color .fa-left-right {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .gen-color:hover .copy-icon,
+  .gen-color:hover .fa-left-right {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Mobile: always show icons */
+@media (max-width: 768px) {
+  .gen-color .copy-icon,
+  .gen-color .fa-left-right {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    display: inline-block !important;
+    margin-right: 28px;
+    transition: none !important;
+  }
+  .gen-color .fa-left-right {
+    transform: rotate(90deg) !important;
+  }
+  /* Allow transform transitions for drag effects, but disable other transitions */
+  .gen-color {
+    transition: transform 0.2s ease !important;
+  }
+  .gen-color * {
+    transition: none !important;
   }
 }
 
@@ -826,4 +977,8 @@ body {
 }
 .dropdown-menu {
   z-index: 1001;
+}
+
+.hex-code {
+  text-transform: uppercase;
 }
