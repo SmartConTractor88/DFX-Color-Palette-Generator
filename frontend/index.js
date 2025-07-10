@@ -256,12 +256,31 @@ function calculateNewIndex(mouseX) {
 
 function calculateNewIndexVertical(mouseY) {
   const colorDivs = document.querySelectorAll('.gen-color');
-  const paletteTop = dragState.paletteRect.top;
-  const paletteHeight = dragState.paletteRect.height;
-  const colorHeight = paletteHeight / 5;
-  const relativeY = mouseY - paletteTop;
-  const newIndex = Math.floor(relativeY / colorHeight);
-  return Math.max(0, Math.min(4, newIndex));
+  const numColors = colorDivs.length;
+  const draggedCenter = mouseY - dragState.offsetY + dragState.elementHeight / 2;
+
+  // Get the top and bottom of each color block
+  const rects = Array.from(colorDivs).map(div => div.getBoundingClientRect());
+
+  // If above the first block, return 0
+  if (draggedCenter < rects[0].top + rects[0].height / 2) {
+    return 0;
+  }
+  // If below the last block, return last index
+  if (draggedCenter > rects[numColors - 1].top + rects[numColors - 1].height / 2) {
+    return numColors - 1;
+  }
+
+  // Otherwise, find the correct zone
+  for (let i = 0; i < numColors - 1; i++) {
+    const currentCenter = rects[i].top + rects[i].height / 2;
+    const nextCenter = rects[i + 1].top + rects[i + 1].height / 2;
+    const boundary = (currentCenter + nextCenter) / 2;
+    if (draggedCenter < boundary) {
+      return i;
+    }
+  }
+  return numColors - 1;
 }
 
 function updateVisualOrder() {
@@ -326,18 +345,33 @@ function endDrag(e) {
 function reorderDOM() {
   const colorDivs = document.querySelectorAll('.gen-color');
   const palette = document.querySelector('.palette');
-  
+
+  // --- Fix: Remove transforms and transitions before DOM update ---
+  colorDivs.forEach(div => {
+    div.style.transition = 'none';
+    div.style.transform = 'translateY(0)';
+  });
+
+  // Now update the DOM
   const elements = Array.from(colorDivs);
   const draggedElement = elements[dragState.originalIndex];
-  
+
   elements.splice(dragState.originalIndex, 1);
   elements.splice(dragState.currentIndex, 0, draggedElement);
-  
+
   palette.innerHTML = '';
   elements.forEach(element => {
     palette.appendChild(element);
   });
-  
+
+  // Restore transition after a frame for future drags
+  const newColorDivs = document.querySelectorAll('.gen-color');
+  requestAnimationFrame(() => {
+    newColorDivs.forEach(div => {
+      div.style.transition = 'transform 0.2s ease';
+    });
+  });
+
   // Immediately enforce layout, then reinitialize drag and drop
   enforceGenColorLayout();
   setTimeout(() => {
@@ -357,34 +391,44 @@ function cleanupDrag() {
     dragState.draggedElement.style.transition = 'opacity 0.2s ease';
     dragState.draggedElement.style.pointerEvents = '';
     
-      // Show icons again after drag
-  const copyIcon = dragState.draggedElement.querySelector('.copy-icon');
-  const dragIcon = dragState.draggedElement.querySelector('.fa-left-right');
-  if (copyIcon) copyIcon.style.opacity = '';
-  if (dragIcon) {
-    dragIcon.style.cursor = 'grab';
-    dragIcon.style.opacity = '';
+    // Show icons again after drag
+    const copyIcon = dragState.draggedElement.querySelector('.copy-icon');
+    const dragIcon = dragState.draggedElement.querySelector('.fa-left-right');
+    if (copyIcon) copyIcon.style.opacity = '';
+    if (dragIcon) {
+      dragIcon.style.cursor = 'grab';
+      dragIcon.style.opacity = '';
+    }
+    // Force show icons on mobile/tablet by overriding CSS !important
+    if (window.innerWidth <= 768) {
+      if (copyIcon) copyIcon.style.setProperty('opacity', '1', 'important');
+      if (dragIcon) dragIcon.style.setProperty('opacity', '1', 'important');
+    }
   }
-  
-  // Force show icons on mobile/tablet by overriding CSS !important
-  if (window.innerWidth <= 768) {
-    if (copyIcon) copyIcon.style.setProperty('opacity', '1', 'important');
-    if (dragIcon) dragIcon.style.setProperty('opacity', '1', 'important');
-  }
-  }
-  
-  // Reset all transforms and add smooth transitions
+
+  // --- Fix: Remove transition before resetting transform, then restore it after a frame ---
   const colorDivs = document.querySelectorAll('.gen-color');
   colorDivs.forEach(div => {
     if (dragState.verticalMode) {
+      div.style.transition = 'none';
       div.style.transform = 'translateY(0)';
-      div.style.transition = 'transform 0.3s ease';
     } else {
+      div.style.transition = 'none';
       div.style.transform = 'translateX(0)';
-      div.style.transition = 'transform 0.3s ease';
     }
   });
-  
+  // Restore transition after a frame for future drags
+  requestAnimationFrame(() => {
+    colorDivs.forEach(div => {
+      if (dragState.verticalMode) {
+        div.style.transition = 'transform 0.3s ease';
+      } else {
+        div.style.transition = 'transform 0.3s ease';
+      }
+    });
+  });
+  // --- End fix ---
+
   // Ensure layout is correct after cleanup
   enforceGenColorLayout();
   
