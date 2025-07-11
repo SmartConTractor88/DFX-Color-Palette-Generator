@@ -579,6 +579,28 @@ body {
   cursor: pointer;
 }
 
+.hex-input {
+  text-transform: uppercase;
+  border: none;
+  background: transparent !important;
+  font-size: 1.5rem;
+  font-family: inherit;
+  width: 100px;
+  text-align: center;
+  outline: none;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  display: block;
+  box-sizing: border-box;
+  transition: box-shadow 0.2s, border 0.2s;
+}
+.hex-input:focus {
+  border: 1.5px solid #aaa;
+  box-shadow: none;
+  background: transparent !important;
+}
+
 /* ================================
    Animations & Keyframes
    ================================ */
@@ -725,6 +747,14 @@ body {
     font-size: 1.4rem;
   }
 
+  .hex-input {
+    font-size: 1.5rem;
+    width: 80px;
+    text-align: left;
+    margin-left: 8px;
+    background: transparent !important;
+  }
+
   /* Mobile Bottom Toolbar */
   .toolbar {
     position: fixed;
@@ -821,22 +851,39 @@ body {
   .gen-color .hex-code {
     position: static;
     transform: none;
-    margin: 0 0 0 8px;
+    margin: 0 0 0 6px;
     text-align: left;
     display: block;
     flex: 1 1 auto;
+    max-width: 100px;
+  }
+  .gen-color .hex-input {
+    font-size: 1.5rem;
+    width: 100px;
+    text-align: left;
+    margin-left: 8px;
+    background: transparent !important;
+    max-width: 100px;
   }
   .gen-color .copy-icon,
   .gen-color .fa-left-right {
-    position: static;
-    transform: none;
-    margin: 0 8px 0 0;
-    text-align: right;
-    display: inline-block;
-    flex: 0 0 auto;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: block;
     font-size: 1.4rem;
-    vertical-align: middle;
     transition: none !important;
+  }
+  .gen-color .copy-icon {
+    margin-top: 22px;
+    top: calc(50% + 22px);
+    text-align: center;
+  }
+  .gen-color .fa-left-right {
+    margin-top: 44px;
+    top: calc(50% + 44px);
+    text-align: center;
+    transform: translateX(-50%) rotate(90deg);
   }
 }
 
@@ -913,23 +960,57 @@ body {
 
 /* Mobile: always show icons */
 @media (max-width: 768px) {
-  .gen-color .copy-icon,
-  .gen-color .fa-left-right {
+  .gen-color {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100%;
+    padding: 0 8px !important;
+    min-width: 0;
+  }
+  .hex-left {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
+  .hex-right {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hex-input,
+  .hex-code {
+    max-width: 100px !important;
+    min-width: 0 !important;
+    width: auto !important;
+    margin: 0 8px 0 0 !important;
+    text-align: left !important;
+    display: block !important;
+    position: static !important;
+    transform: none !important;
+    flex: 1 1 auto !important;
+  }
+  .hex-right i {
+    margin: 0 0 0 8px !important;
+    position: static !important;
+    transform: none !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    font-size: 1.4rem !important;
+    vertical-align: middle !important;
+    transition: none !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    display: inline-block !important;
-    margin-right: 28px;
-    transition: none !important;
   }
-  .gen-color .fa-left-right {
+  .hex-right .fa-left-right {
     transform: rotate(90deg) !important;
+    margin-right: 28px !important;
   }
-  /* Allow transform transitions for drag effects, but disable other transitions */
-  .gen-color {
-    transition: transform 0.2s ease !important;
-  }
-  .gen-color * {
-    transition: none !important;
+  .hex-right .copy-icon {
+    margin-right: 8px !important;
   }
 }
 

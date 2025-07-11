@@ -310,6 +310,7 @@ type OpenIdCredential = record {
 type OpenIdCredentialAddError = variant {
   OpenIdCredentialAlreadyRegistered;
   InternalCanisterError : text;
+  JwtExpired;
   Unauthorized : principal;
   JwtVerificationFailed;
 };
@@ -322,6 +323,7 @@ type OpenIdCredentialRemoveError = variant {
 type OpenIdDelegationError = variant {
   NoSuchDelegation;
   NoSuchAnchor;
+  JwtExpired;
   JwtVerificationFailed;
 };
 type OpenIdPrepareDelegationResponse = record {

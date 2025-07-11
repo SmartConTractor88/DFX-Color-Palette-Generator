@@ -23,7 +23,8 @@ let dragState = {
   originalLeft: 0,
   elementHeight: 0,
   elementWidth: 0,
-  verticalMode: false
+  verticalMode: false,
+  placeholder: null
 };
 
 function initDragAndDrop() {
@@ -55,12 +56,11 @@ function initDragAndDrop() {
         }
       });
       
-      // Touch events for mobile - simplified approach
+      // Touch events for mobile - use only clientX/clientY for correct coordinates
       dragIcon.addEventListener('touchstart', (e) => {
-        // Simple touch handling without preventDefault
         if (e && e.touches && e.touches[0]) {
           const touch = e.touches[0];
-          // Create a synthetic mouse event for compatibility
+          // Use only clientX/clientY for mobile
           const mouseEvent = {
             clientX: touch.clientX,
             clientY: touch.clientY,
@@ -77,12 +77,11 @@ function initDragAndDrop() {
   document.addEventListener('mousemove', handleDrag);
   document.addEventListener('mouseup', endDrag);
   
-  // Touch events for mobile - simplified approach
+  // Touch events for mobile - use only clientX/clientY for correct coordinates
   document.addEventListener('touchmove', (e) => {
-    // Only handle if we're actually dragging
     if (dragState.isDragging && e && e.touches && e.touches[0]) {
+      e.preventDefault(); // Prevent browser scroll/interference
       const touch = e.touches[0];
-      // Create a synthetic mouse event for compatibility
       const mouseEvent = {
         clientX: touch.clientX,
         clientY: touch.clientY,
@@ -90,13 +89,18 @@ function initDragAndDrop() {
       };
       handleDrag(mouseEvent);
     }
-  });
+  }, { passive: false });
   
+  document.addEventListener('touchstart', (e) => {
+    if (dragState.isDragging && e && e.touches && e.touches[0]) {
+      e.preventDefault(); // Prevent browser scroll/interference
+    }
+  }, { passive: false });
+
   document.addEventListener('touchend', (e) => {
-    // Only handle if we're actually dragging
     if (dragState.isDragging && e && e.changedTouches && e.changedTouches[0]) {
+      e.preventDefault(); // Prevent browser scroll/interference
       const touch = e.changedTouches[0];
-      // Create a synthetic mouse event for compatibility
       const mouseEvent = {
         clientX: touch.clientX,
         clientY: touch.clientY,
@@ -104,7 +108,7 @@ function initDragAndDrop() {
       };
       endDrag(mouseEvent);
     }
-  });
+  }, { passive: false });
   
   // Ensure layout is correct after initialization
   enforceGenColorLayout();
@@ -130,7 +134,7 @@ function startDrag(e, element, index) {
   dragState.isDragging = true;
   dragState.draggedElement = element;
   dragState.originalIndex = index;
-  dragState.currentIndex = index;
+  dragState.currentIndex = index; // Start at the same position
   dragState.startX = e.clientX;
   dragState.startY = e.clientY;
   
@@ -149,7 +153,7 @@ function startDrag(e, element, index) {
   // Always create drag clone for both modes
   createDragClone(element, rect);
   
-  // Always make the original element transparent (no ghost)
+  // Make the original element transparent (ghost) - same as horizontal
   element.style.opacity = '0';
   element.style.transition = 'opacity 0.2s ease';
   element.style.pointerEvents = 'none';
@@ -226,7 +230,7 @@ function handleDrag(e) {
       dragState.dragClone.style.top = y + 'px';
       dragState.dragClone.style.left = dragState.originalLeft + 'px';
       dragState.dragClone.style.transform = 'none';
-      newIndex = calculateNewIndexVertical(e.clientY);
+      newIndex = calculateNewIndexVertical(e.clientY); // Pass finger position directly
     } else {
       const x = e.clientX - dragState.offsetX;
       dragState.dragClone.style.left = x + 'px';
@@ -235,7 +239,11 @@ function handleDrag(e) {
       newIndex = calculateNewIndex(e.clientX);
     }
 
-    if (newIndex !== dragState.currentIndex) {
+    // Only update visual order if the index actually changed AND we've moved enough
+    const moveDistance = Math.abs(e.clientY - dragState.startY) + Math.abs(e.clientX - dragState.startX);
+    const minMoveThreshold = 10; // pixels
+    
+    if (newIndex !== dragState.currentIndex && moveDistance > minMoveThreshold) {
       dragState.currentIndex = newIndex;
       updateVisualOrder();
     }
@@ -254,57 +262,42 @@ function calculateNewIndex(mouseX) {
   return Math.max(0, Math.min(4, newIndex));
 }
 
-function calculateNewIndexVertical(mouseY) {
+function calculateNewIndexVertical(clientY) {
   const colorDivs = document.querySelectorAll('.gen-color');
-  const numColors = colorDivs.length;
-  const draggedCenter = mouseY - dragState.offsetY + dragState.elementHeight / 2;
-
-  // Get the top and bottom of each color block
-  const rects = Array.from(colorDivs).map(div => div.getBoundingClientRect());
-
-  // If above the first block, return 0
-  if (draggedCenter < rects[0].top + rects[0].height / 2) {
-    return 0;
-  }
-  // If below the last block, return last index
-  if (draggedCenter > rects[numColors - 1].top + rects[numColors - 1].height / 2) {
-    return numColors - 1;
-  }
-
-  // Otherwise, find the correct zone
-  for (let i = 0; i < numColors - 1; i++) {
-    const currentCenter = rects[i].top + rects[i].height / 2;
-    const nextCenter = rects[i + 1].top + rects[i + 1].height / 2;
-    const boundary = (currentCenter + nextCenter) / 2;
-    if (draggedCenter < boundary) {
-      return i;
-    }
-  }
-  return numColors - 1;
+  const paletteTop = dragState.paletteRect.top;
+  const paletteHeight = dragState.paletteRect.height;
+  const colorHeight = paletteHeight / 5; // 20% each, same as horizontal
+  
+  const relativeY = clientY - paletteTop;
+  const newIndex = Math.floor(relativeY / colorHeight);
+  
+  return Math.max(0, Math.min(4, newIndex));
 }
 
 function updateVisualOrder() {
   const colorDivs = document.querySelectorAll('.gen-color');
   if (dragState.verticalMode) {
-    const colorHeight = 100; // percent
+    // Calculate the pixel height of the dragged block
+    const heights = Array.from(colorDivs).map(div => div.getBoundingClientRect().height);
+    const draggedHeight = heights[dragState.originalIndex];
     colorDivs.forEach((div, index) => {
-      // Add smooth transition for vertical mode
       div.style.transition = 'transform 0.2s ease';
-      
       if (index === dragState.originalIndex) {
         div.style.transform = 'translateY(0)';
       } else if (dragState.currentIndex > dragState.originalIndex) {
         if (index > dragState.originalIndex && index <= dragState.currentIndex) {
-          div.style.transform = `translateY(-${colorHeight}%)`;
+          div.style.transform = `translateY(-${draggedHeight}px)`;
         } else {
           div.style.transform = 'translateY(0)';
         }
       } else if (dragState.currentIndex < dragState.originalIndex) {
         if (index >= dragState.currentIndex && index < dragState.originalIndex) {
-          div.style.transform = `translateY(${colorHeight}%)`;
+          div.style.transform = `translateY(${draggedHeight}px)`;
         } else {
           div.style.transform = 'translateY(0)';
         }
+      } else {
+        div.style.transform = 'translateY(0)';
       }
     });
   } else {
@@ -312,7 +305,6 @@ function updateVisualOrder() {
     colorDivs.forEach((div, index) => {
       // Add smooth transition for horizontal mode
       div.style.transition = 'transform 0.2s ease';
-      
       if (index === dragState.originalIndex) {
         div.style.transform = 'translateX(0)';
       } else if (dragState.currentIndex > dragState.originalIndex) {
@@ -327,6 +319,8 @@ function updateVisualOrder() {
         } else {
           div.style.transform = 'translateX(0)';
         }
+      } else {
+        div.style.transform = 'translateX(0)';
       }
     });
   }
@@ -386,7 +380,7 @@ function cleanupDrag() {
   }
   
   if (dragState.draggedElement) {
-    // Always restore opacity (no ghost in any mode)
+    // Restore the original element - same as horizontal
     dragState.draggedElement.style.opacity = '1';
     dragState.draggedElement.style.transition = 'opacity 0.2s ease';
     dragState.draggedElement.style.pointerEvents = '';
@@ -534,22 +528,116 @@ function generatePalette() {
       wrapper.style.alignItems = "center";
       wrapper.style.gap = "6px";
 
+      // --- HEX CODE DISPLAY/EDIT LOGIC ---
+      // Create span for hex code display
       const hexText = document.createElement("span");
       hexText.className = "hex-code";
-      hexText.innerText = color.replace(/^#/, "");
+      hexText.innerText = color.replace(/^#/, "").toUpperCase();
       hexText.style.color = textColor;
+      hexText.tabIndex = 0; // Make focusable for accessibility
+      // On click, turn into input
+      hexText.addEventListener("click", () => switchToInput());
+      // On touch (mobile), also turn into input
+      hexText.addEventListener("touchend", (e) => {
+        // Only preventDefault if this is a real touch event (not mouse emulation)
+        if (e.cancelable && e.touches && e.touches.length > 0) {
+          e.preventDefault();
+        }
+        switchToInput();
+      });
+      hexText.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          switchToInput();
+        }
+      });
+      // Function to switch to input
+      function switchToInput() {
+        const input = document.createElement("input");
+        input.className = "hex-input";
+        input.type = "text";
+        input.maxLength = 6;
+        input.value = hexText.innerText;
+        input.style.color = textColor;
+        input.autocomplete = "off";
+        input.spellcheck = false;
+        input.inputMode = "text";
+        input.pattern = "[0-9A-Fa-f]{0,6}";
+        input.title = "Edit color (hex)";
+        // Replace span with input
+        hexText.replaceWith(input);
+        input.focus();
+        input.select();
+        // Input validation and live update
+        input.addEventListener("input", () => {
+          let val = input.value.toUpperCase().replace(/[^0-9A-F]/g, "");
+          if (val.length > 6) val = val.slice(0, 6);
+          input.value = val;
+          // Pad with zeros for live preview
+          let padded = val.padEnd(6, "0");
+          div.style.backgroundColor = "#" + padded;
+          // Update text color for contrast
+          const liveTextColor = chroma("#" + padded).luminance() > 0.5 ? "#000" : "#fff";
+          input.style.color = liveTextColor;
+          copyIcon.style.color = liveTextColor;
+          dragIcon.style.color = liveTextColor;
+          // If palette was from favorites, reset like button
+          if (likeButton.classList.contains("fas")) {
+            toggleLikeButton(false);
+          }
+        });
+        // Prevent non-hex paste
+        input.addEventListener("paste", (e) => {
+          e.preventDefault();
+          let text = (e.clipboardData || window.clipboardData).getData("text");
+          text = text.toUpperCase().replace(/[^0-9A-F]/g, "").slice(0, 6);
+          document.execCommand("insertText", false, text);
+        });
+        // On blur or Enter, commit and switch back to span
+        function commit() {
+          let val = input.value.toUpperCase().replace(/[^0-9A-F]/g, "");
+          if (val.length === 0) val = "000000";
+          val = val.slice(0, 6);
+          hexText.innerText = val;
+          div.style.backgroundColor = "#" + val.padEnd(6, "0");
+          // Update text color for contrast
+          const liveTextColor = chroma("#" + val.padEnd(6, "0")).luminance() > 0.5 ? "#000" : "#fff";
+          hexText.style.color = liveTextColor;
+          copyIcon.style.color = liveTextColor;
+          dragIcon.style.color = liveTextColor;
+          input.replaceWith(hexText);
+        }
+        input.addEventListener("blur", commit);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            commit();
+          }
+        });
+      }
+      // --- End HEX CODE DISPLAY/EDIT LOGIC ---
 
       const copyIcon = document.createElement("i");
       copyIcon.className = "fas fa-copy copy-icon";
       copyIcon.style.color = textColor;
       copyIcon.title = "Copy to clipboard";
       copyIcon.onclick = () => {
-        navigator.clipboard.writeText(color.toUpperCase()).then(() => {
-          copyIcon.classList.replace("fa-copy", "fa-check");
-          setTimeout(() => {
-            copyIcon.classList.replace("fa-check", "fa-copy");
-          }, 1000);
-        });
+        // Always get the current value from the DOM (input or span)
+        let hexValue = null;
+        const input = div.querySelector(".hex-input");
+        const span = div.querySelector(".hex-code");
+        if (input && document.activeElement === input) {
+          hexValue = input.value.toUpperCase();
+        } else if (span) {
+          hexValue = span.innerText.toUpperCase();
+        }
+        if (hexValue && hexValue.length > 0) {
+          navigator.clipboard.writeText("#" + hexValue).then(() => {
+            copyIcon.classList.replace("fa-copy", "fa-check");
+            setTimeout(() => {
+              copyIcon.classList.replace("fa-check", "fa-copy");
+            }, 1000);
+          });
+        }
       };
 
       const dragIcon = document.createElement("i");
@@ -560,10 +648,25 @@ function generatePalette() {
       dragIcon.style.cursor = 'grab';
 
       if (window.innerWidth <= 768) {
-        // On mobile/tablet, append directly to div for horizontal layout
-        div.appendChild(hexText);
-        div.appendChild(copyIcon);
-        div.appendChild(dragIcon);
+        // On mobile/tablet, use two containers for left/right alignment
+        const left = document.createElement("div");
+        left.className = "hex-left";
+        left.style.display = "flex";
+        left.style.alignItems = "center";
+        left.style.flex = "1 1 auto";
+        left.appendChild(hexText);
+
+        const right = document.createElement("div");
+        right.className = "hex-right";
+        right.style.display = "flex";
+        right.style.alignItems = "center";
+        right.style.gap = "12px";
+        right.style.flex = "0 0 auto";
+        right.appendChild(copyIcon);
+        right.appendChild(dragIcon);
+
+        div.appendChild(left);
+        div.appendChild(right);
       } else {
         // On desktop, use vertical wrapper
         wrapper.appendChild(hexText);
@@ -796,6 +899,21 @@ function updateFavoritesDropdown(palettes = []) {
         hexText.className = "hex-code";
         hexText.innerText = color.replace(/^#/, "");
         hexText.style.color = textColor;
+        // Attach event listeners BEFORE appending to DOM
+        hexText.tabIndex = 0;
+        hexText.addEventListener("click", () => switchToInput());
+        hexText.addEventListener("touchend", (e) => {
+          if (e.cancelable && e.touches && e.touches.length > 0) {
+            e.preventDefault();
+          }
+          switchToInput();
+        });
+        hexText.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            switchToInput();
+          }
+        });
         const copyIcon = document.createElement("i");
         copyIcon.className = "fas fa-copy copy-icon";
         copyIcon.style.color = textColor;
@@ -816,9 +934,25 @@ function updateFavoritesDropdown(palettes = []) {
         dragIcon.style.cursor = 'grab';
 
         if (window.innerWidth <= 768) {
-          div.appendChild(hexText);
-          div.appendChild(copyIcon);
-          div.appendChild(dragIcon);
+          // Use same structure as generatePalette for mobile
+          const left = document.createElement("div");
+          left.className = "hex-left";
+          left.style.display = "flex";
+          left.style.alignItems = "center";
+          left.style.flex = "1 1 auto";
+          left.appendChild(hexText);
+
+          const right = document.createElement("div");
+          right.className = "hex-right";
+          right.style.display = "flex";
+          right.style.alignItems = "center";
+          right.style.gap = "12px";
+          right.style.flex = "0 0 auto";
+          right.appendChild(copyIcon);
+          right.appendChild(dragIcon);
+
+          div.appendChild(left);
+          div.appendChild(right);
         } else {
           wrapper.appendChild(hexText);
           wrapper.appendChild(copyIcon);
