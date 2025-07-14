@@ -4,7 +4,7 @@
 :root {
     --bg-color: #FCFFFD;
     --border-color: rgb(163, 165, 170);
-    --accent-bright: rgb(26, 225, 202);
+    --accent-bright: #44CAFB;
     --accent-dark: #2c2c2c;
 }
 
@@ -249,7 +249,6 @@ body {
 .toolbar-right {
   display: flex;
   align-items: center;
-  gap: 20px;
   margin-left: auto;
 }
 
@@ -309,8 +308,12 @@ body {
 /* Toolbar Functions */
 .toolbar-functions {
   display: flex;
-  gap: 20px;
   align-items: center;
+}
+
+.toolbar-functions .toolbar-function {
+  margin: 0 12px;
+  padding: 0;
 }
 
 .toolbar-function {
@@ -335,31 +338,13 @@ body {
   display: inline-block;
 }
 
-.favorites-disabled .toolbar-function {
+.favorites-disabled #like-button,
+.favorites-disabled #list-button {
   opacity: 0.4;
   pointer-events: none;
 }
 
-.favorites-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
 
-/* Arrow rotation animation */
-#favorites-dropdown-toggle {
-  transition: transform 0.3s ease;
-}
-
-#favorites-dropdown-toggle.rotated {
-  transform: rotate(180deg);
-}
-
-.favorites-dropdown-wrapper {
-  position: relative;
-  width: 80%;
-}
 
 .favorites-dropdown {
   position: absolute;
@@ -427,13 +412,6 @@ body {
 
 .delete-all-icon:hover {
   color: #111;
-}
-
-.dropdown-placeholder {
-  text-align: center;
-  color: #888;
-  font-size: 0.9rem;
-  padding: 10px 0;
 }
 
 /* Favorite Items */
@@ -507,6 +485,95 @@ body {
 }
 
 /* ================================
+   Main Content & Sidebar Layout
+   ================================ */
+/* Remove main-content resizing for sidebar-favorites */
+/* Remove .sidebar-favorites-open .main-content and related rules */
+
+/* ================================
+   Sidebar Favorites
+   ================================ */
+.sidebar-favorites {
+  position: fixed;
+  top: 0;
+  right: -30vw;
+  width: 25vw;
+  height: 100vh;
+  background-color: var(--bg-color);
+  border-left: 1px solid var(--border-color);
+  z-index: 1002;
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-favorites.open {
+  right: 0;
+}
+
+.sidebar-favorites-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: #f8f9fa;
+}
+
+.sidebar-favorites-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.close-sidebar-favorites-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #666;
+  padding: 5px;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+}
+
+.close-sidebar-favorites-btn:hover {
+  color: #333;
+}
+
+.sidebar-favorites-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Remove food-list styles */
+/* .food-list, .food-list li, .food-list li:hover, .food-list li:last-child */
+
+/* Sidebar Favorites backdrop for mobile */
+.sidebar-favorites-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(30, 30, 30, 0.25);
+  backdrop-filter: blur(8px);
+  z-index: 1001;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.sidebar-favorites-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ================================
    Palette
    ================================ */
 .palette {
@@ -572,6 +639,27 @@ body {
   top: calc(50% + 44px);
   display: block;
   text-align: center;
+}
+
+.gen-color .color-heart-icon {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 66px;
+  top: calc(50% + 66px);
+  display: block;
+  text-align: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.gen-color .color-heart-icon.hidden {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .copy-icon {
@@ -641,6 +729,20 @@ body {
     height: 12vh;
     padding: 10px;
   }
+  
+  /* Mobile sidebar - full screen */
+  .sidebar-favorites {
+    width: 100vw;
+    right: -105vw;
+  }
+  
+  .sidebar-favorites.open {
+    right: 0;
+  }
+  
+  .sidebar-favorites-open .main-content {
+    width: 100%;
+  }
 
   #principalTooltip {
     visibility: hidden;
@@ -679,7 +781,6 @@ body {
 
   .toolbar-functions {
     justify-content: center;
-    gap: 30px;
   }
 
   .toolbar-function {
@@ -725,17 +826,28 @@ body {
   }
 
   .palette {
-    flex: 1;
+    position: fixed;
+    top: 12vh;
+    left: 0;
+    right: 0;
+    bottom: 12.5vh;
+    height: auto;
+    width: 100vw;
     display: flex;
     flex-direction: column;
-    padding-bottom: 15vh;
     box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    z-index: 1;
   }
-
   .gen-color {
     width: 100%;
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
     height: auto;
+    margin: 0;
+    padding: 0 12px;
+    box-sizing: border-box;
   }
 
   .hex-wrapper {
@@ -780,15 +892,17 @@ body {
     justify-content: center;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 20px;
   }
 
-  #favorites-wrapper,
   .toolbar-functions {
     display: flex;
     flex-direction: row;
     align-items: center;
-    gap: 20px;
+  }
+  
+  .toolbar-functions .toolbar-function {
+    margin: 0 12px;
+    padding: 0;
   }
 
   .generate {
@@ -797,11 +911,6 @@ body {
     height: 48px;
     font-size: 1.2rem;
     margin: 0 auto env(safe-area-inset-bottom, 12px);
-  }
-
-  /* Flip the arrow when toolbar is at bottom */
-  #favorites-dropdown-toggle {
-    transform: rotate(180deg);
   }
 
   /* Fix for bottom toolbar - dropdown should go upwards */
@@ -822,15 +931,6 @@ body {
   
   .favorites-dropdown.show {
     transform: translateY(0);
-  }
-
-  /* Mobile arrow rotation (overrides the above when toolbar is at bottom) */
-  #favorites-dropdown-toggle {
-    transform: rotate(180deg);
-  }
-  
-  #favorites-dropdown-toggle.rotated {
-    transform: rotate(0deg);
   }
 
   .fa-left-right {
@@ -866,7 +966,8 @@ body {
     max-width: 100px;
   }
   .gen-color .copy-icon,
-  .gen-color .fa-left-right {
+  .gen-color .fa-left-right,
+  .gen-color .color-heart-icon {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
@@ -884,6 +985,11 @@ body {
     top: calc(50% + 44px);
     text-align: center;
     transform: translateX(-50%) rotate(90deg);
+  }
+  .gen-color .color-heart-icon {
+    margin-top: 66px;
+    top: calc(50% + 66px);
+    text-align: center;
   }
 }
 
@@ -905,19 +1011,38 @@ body {
     width: 100vw;
     display: flex;
     flex-direction: column;
-    z-index: 1;
-    padding-bottom: 0;
     box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    z-index: 1;
+  }
+  
+  /* Mobile sidebar - full screen */
+  .sidebar-favorites {
+    width: 100vw;
+    right: -105vw;
+  }
+  
+  .sidebar-favorites.open {
+    right: 0;
+  }
+  
+  .sidebar-favorites-open .main-content {
+    width: 100%;
   }
   .gen-color {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0 12px;
+    box-sizing: border-box;
+    display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
     position: relative;
-    width: 100%;
-    height: 20%;
-    min-height: 0;
-    padding: 0 12px;
   }
   .gen-color .hex-code {
     position: static;
@@ -928,7 +1053,8 @@ body {
     flex: 1 1 auto;
   }
   .gen-color .copy-icon,
-  .gen-color .fa-left-right {
+  .gen-color .fa-left-right,
+  .gen-color .color-heart-icon {
     position: static;
     transform: none;
     margin: 0 0 0 12px;
@@ -941,18 +1067,26 @@ body {
   .profile-display #profileName {
     display: none;
   }
+  .pill-toggle {
+    width: 100%;
+    min-width: 180px;
+    max-width: 320px;
+    margin: 0 auto 8px auto;
+  }
 }
 
 /* Desktop: hide icons by default, show on hover */
 @media (min-width: 481px) {
   .gen-color .copy-icon,
-  .gen-color .fa-left-right {
+  .gen-color .fa-left-right,
+  .gen-color .color-heart-icon {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s;
   }
   .gen-color:hover .copy-icon,
-  .gen-color:hover .fa-left-right {
+  .gen-color:hover .fa-left-right,
+  .gen-color:hover .color-heart-icon {
     opacity: 1;
     pointer-events: auto;
   }
@@ -1005,12 +1139,25 @@ body {
     opacity: 1 !important;
     pointer-events: auto !important;
   }
+  
+  .gen-color .color-heart-icon {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
   .hex-right .fa-left-right {
     transform: rotate(90deg) !important;
-    margin-right: 28px !important;
+    margin-right: 8px !important;
   }
   .hex-right .copy-icon {
     margin-right: 8px !important;
+  }
+  .hex-right .color-heart-icon {
+    margin-right: 8px !important;
+  }
+  
+  /* Icon wrapper to maintain consistent right margin */
+  .hex-right {
+    padding-right: 20px !important;
   }
 }
 
@@ -1062,4 +1209,326 @@ body {
 
 .hex-code {
   text-transform: uppercase;
+}
+
+.pill-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #f0f0f0;
+  border-radius: 999px;
+  padding: 4px;
+  width: 220px;
+  height: 40px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  margin-right: 16px;
+}
+.pill-option {
+  position: relative;
+  flex: 1 1 0;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: color 0.2s;
+  outline: none;
+}
+.pill-option.active {
+  color: #fff;
+}
+.pill-slider {
+  position: absolute;
+  background: var(--accent-bright, #44CAFB);
+  border-radius: 999px;
+  z-index: 1;
+  transition: left 0.25s cubic-bezier(.4,1.4,.6,1), width 0.25s cubic-bezier(.4,1.4,.6,1), background 0.2s;
+}
+.pill-toggle .pill-option {
+  transition: color 0.2s;
+}
+.pill-toggle .pill-option:active {
+  color: #222;
+}
+
+@media (max-width: 480px) {
+  .pill-toggle {
+    width: 100%;
+    min-width: 180px;
+    max-width: 320px;
+    margin: 0 auto 8px auto;
+  }
+}
+
+.sidebar-favorites-placeholder {
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+  padding: 10px 0;
+  opacity: 0;
+  transition: opacity 0.4s cubic-bezier(.4,1.4,.6,1);
+}
+.sidebar-favorites-placeholder.fade-in {
+  opacity: 1;
+}
+
+.sidebar-fav-palette-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 20px 20px 16px 20px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transition: box-shadow 0.2s, transform 0.4s cubic-bezier(.4,1.4,.6,1), opacity 0.4s cubic-bezier(.4,1.4,.6,1);
+}
+.sidebar-fav-palette-card.fade-out {
+  opacity: 0;
+  transform: translateX(60px);
+  pointer-events: none;
+}
+.sidebar-fav-palette-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+.sidebar-fav-palette-colors {
+  display: flex;
+  gap: 10px;
+}
+.sidebar-fav-color-box {
+  width: 29px;
+  height: 29px;
+  border-radius: 8px;
+  border: 1.5px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: border 0.2s;
+}
+
+.sidebar-fav-palette-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+  width: 100%;
+}
+.sidebar-fav-palette-title-input {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  letter-spacing: 0.01em;
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  padding: 0 0 4px 0;
+  border-bottom: 1.5px dashed #e0e0e0;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+.sidebar-fav-palette-title-input:focus {
+  border-bottom: 1.5px solid var(--accent-bright, #44CAFB);
+  background: #f8faff;
+}
+.sidebar-fav-palette-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.sidebar-fav-expand-btn,
+.sidebar-fav-delete-btn {
+  font-size: 1.4rem;
+  color: #444;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding: 4px;
+  border-radius: 4px;
+}
+.sidebar-fav-expand-btn:hover {
+  color: #000;
+}
+.sidebar-fav-delete-btn:hover {
+  color: #000;
+}
+
+/* Favorite Colors in Sidebar */
+.sidebar-fav-color-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 18px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transition: box-shadow 0.2s, transform 0.4s cubic-bezier(.4,1.4,.6,1), opacity 0.4s cubic-bezier(.4,1.4,.6,1);
+}
+
+.sidebar-fav-color-card.fade-out {
+  opacity: 0;
+  transform: translateX(60px);
+  pointer-events: none;
+}
+
+/* Header row: title left, icons right */
+.sidebar-fav-color-header-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.sidebar-fav-color-title-input {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  letter-spacing: 0.01em;
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  padding: 0 0 4px 0;
+  border-bottom: 1.5px dashed #e0e0e0;
+  transition: border-color 0.2s;
+}
+.sidebar-fav-color-title-input:focus {
+  border-bottom: 1.5px solid var(--accent-bright, #44CAFB);
+  background: #f8faff;
+}
+
+/* Row: color box left, hex code right */
+.sidebar-fav-color-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+  margin-top: 6px;
+}
+.sidebar-fav-color-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 2px solid #e0e0e0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  transition: border 0.2s;
+}
+.sidebar-fav-color-hex {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  margin-left: 12px;
+}
+
+.sidebar-fav-color-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.sidebar-fav-color-delete-btn {
+  font-size: 1.4rem;
+  color: #444;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.sidebar-fav-color-delete-btn:hover {
+  color: #000;
+}
+
+/* Copy icon in sidebar favorite colors - styled like toolbar */
+.sidebar-fav-color-copy-btn {
+  font-size: 1.4rem;
+  color: #444;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.sidebar-fav-color-copy-btn:hover {
+  color: #000;
+}
+
+.gen-color > b {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #888;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Sidebar Favorites Content Sliding */
+.sidebar-favorites-slider {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.sidebar-favorites-panel {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 8px;
+  box-sizing: border-box;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+.sidebar-favorites-panel.active {
+  transform: translateX(0);
+}
+.sidebar-favorites-panel:not(.active) {
+  transform: translateX(100%);
+}
+
+@media (max-width: 768px) {
+  .sidebar-favorites-panel {
+    padding: 0 2vw;
+  }
+  
+  /* Mobile-specific card adjustments */
+  .sidebar-fav-palette-card,
+  .sidebar-fav-color-card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  /* Ensure actions stay within card boundaries */
+  .sidebar-fav-palette-actions,
+  .sidebar-fav-color-actions {
+    gap: 4px;
+  }
+  
+  /* Reduce icon padding on mobile */
+  .sidebar-fav-expand-btn,
+  .sidebar-fav-delete-btn,
+  .sidebar-fav-color-delete-btn,
+  .sidebar-fav-color-copy-btn {
+    padding: 2px;
+  }
 }

@@ -3,9 +3,18 @@ type Palette = record {
   colors: vec text;
 };
 
+type Color = record {
+  hex_code: text;
+  title: text;
+};
+
 service : {
   add_palette: (text, vec text) -> () ;
   get_palettes: () -> (vec Palette) query;
   delete_palette: (vec text) -> (bool);
   update_palette_title: (vec text, text) -> (bool);
+  add_color: (text) -> () ;
+  get_colors: () -> (vec Color) query;
+  delete_color: (text) -> (bool);
+  update_color_title: (text, text) -> (bool);
 }

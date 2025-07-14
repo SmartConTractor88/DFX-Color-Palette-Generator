@@ -6,6 +6,13 @@ import { AuthClient } from "@dfinity/auth-client";
 import html2canvas from 'html2canvas';
 
 // ================================
+// Global Variables
+// ================================
+let sidebarFavoritesSlider;
+let sidebarFavoritesPalettes;
+let sidebarFavoritesColors;
+
+// ================================
 // Drag and Drop System
 // ================================
 let dragState = {
@@ -161,16 +168,19 @@ function startDrag(e, element, index) {
   // Hide icons during drag - only show hex code
   const copyIcon = element.querySelector('.copy-icon');
   const dragIcon = element.querySelector('.fa-left-right');
+  const heartIcon = element.querySelector('.color-heart-icon');
   if (copyIcon) copyIcon.style.opacity = '0';
   if (dragIcon) {
     dragIcon.style.cursor = 'grabbing';
     dragIcon.style.opacity = '0';
   }
+  if (heartIcon) heartIcon.style.opacity = '0';
   
   // Force hide icons on mobile/tablet by overriding CSS !important
   if (window.innerWidth <= 768) {
     if (copyIcon) copyIcon.style.setProperty('opacity', '0', 'important');
     if (dragIcon) dragIcon.style.setProperty('opacity', '0', 'important');
+    if (heartIcon) heartIcon.style.setProperty('opacity', '0', 'important');
   }
   
   document.body.style.userSelect = 'none';
@@ -388,15 +398,18 @@ function cleanupDrag() {
     // Show icons again after drag
     const copyIcon = dragState.draggedElement.querySelector('.copy-icon');
     const dragIcon = dragState.draggedElement.querySelector('.fa-left-right');
+    const heartIcon = dragState.draggedElement.querySelector('.color-heart-icon');
     if (copyIcon) copyIcon.style.opacity = '';
     if (dragIcon) {
       dragIcon.style.cursor = 'grab';
       dragIcon.style.opacity = '';
     }
+    if (heartIcon) heartIcon.style.opacity = '';
     // Force show icons on mobile/tablet by overriding CSS !important
     if (window.innerWidth <= 768) {
       if (copyIcon) copyIcon.style.setProperty('opacity', '1', 'important');
       if (dragIcon) dragIcon.style.setProperty('opacity', '1', 'important');
+      if (heartIcon) heartIcon.style.setProperty('opacity', '1', 'important');
     }
   }
 
@@ -581,9 +594,21 @@ function generatePalette() {
           input.style.color = liveTextColor;
           copyIcon.style.color = liveTextColor;
           dragIcon.style.color = liveTextColor;
+          heartIcon.style.color = liveTextColor;
           // If palette was from favorites, reset like button
           if (likeButton.classList.contains("fas")) {
             toggleLikeButton(false);
+          }
+          // Check if new color is in favorites and update heart icon
+          if (userIsLoggedIn && val.length === 6) {
+            const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+            if (favoriteHexCodes.includes(val)) {
+              heartIcon.classList.remove('far');
+              heartIcon.classList.add('fas');
+            } else {
+              heartIcon.classList.remove('fas');
+              heartIcon.classList.add('far');
+            }
           }
         });
         // Prevent non-hex paste
@@ -605,6 +630,18 @@ function generatePalette() {
           hexText.style.color = liveTextColor;
           copyIcon.style.color = liveTextColor;
           dragIcon.style.color = liveTextColor;
+          heartIcon.style.color = liveTextColor;
+          // Check if new color is in favorites and update heart icon
+          if (userIsLoggedIn) {
+            const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+            if (favoriteHexCodes.includes(val)) {
+              heartIcon.classList.remove('far');
+              heartIcon.classList.add('fas');
+            } else {
+              heartIcon.classList.remove('fas');
+              heartIcon.classList.add('far');
+            }
+          }
           input.replaceWith(hexText);
         }
         input.addEventListener("blur", commit);
@@ -631,7 +668,7 @@ function generatePalette() {
           hexValue = span.innerText.toUpperCase();
         }
         if (hexValue && hexValue.length > 0) {
-          navigator.clipboard.writeText("#" + hexValue).then(() => {
+          navigator.clipboard.writeText(hexValue).then(() => {
             copyIcon.classList.replace("fa-copy", "fa-check");
             setTimeout(() => {
               copyIcon.classList.replace("fa-check", "fa-copy");
@@ -646,6 +683,86 @@ function generatePalette() {
       dragIcon.style.fontSize = "1.2rem";
       dragIcon.title = "Drag to reorder";
       dragIcon.style.cursor = 'grab';
+
+      // Create heart icon for individual color favorites
+      const heartIcon = document.createElement("i");
+      heartIcon.className = "far fa-heart color-heart-icon";
+      heartIcon.style.color = textColor;
+      heartIcon.title = "Save color to favorites";
+      if (userIsLoggedIn) {
+        heartIcon.style.display = "block";
+        heartIcon.classList.remove('hidden');
+        // Check if this color is already in favorites
+        const currentHexCode = color.replace(/^#/, "").toUpperCase();
+        const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+        if (favoriteHexCodes.includes(currentHexCode)) {
+          heartIcon.classList.remove('far');
+          heartIcon.classList.add('fas');
+        }
+      } else {
+        heartIcon.style.display = "none";
+        heartIcon.classList.add('hidden');
+      }
+      
+      // Add click event for heart icon
+      heartIcon.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (!userIsLoggedIn) {
+          alert("Please log in to save favorite colors.");
+          return;
+        }
+        
+        // Get current hex value from input or span
+        let currentHexCode = null;
+        const input = div.querySelector(".hex-input");
+        const span = div.querySelector(".hex-code");
+        if (input && document.activeElement === input) {
+          currentHexCode = input.value.toUpperCase();
+        } else if (span) {
+          currentHexCode = span.innerText.toUpperCase();
+        }
+        
+        if (!currentHexCode || currentHexCode.length === 0) {
+          alert("Invalid color code.");
+          return;
+        }
+        
+        const isLiked = heartIcon.classList.contains("fas");
+        
+        if (isLiked) {
+          // Remove from favorites
+          heartIcon.classList.remove("fas");
+          heartIcon.classList.add("far");
+          try {
+            await backend.delete_color(currentHexCode);
+            // Update local state immediately to prevent flicker
+            sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== currentHexCode);
+            // Update all heart icons for this color across all .gen-color divs
+            updateAllHeartIconsForColor(currentHexCode, false);
+          } catch (err) {
+            heartIcon.classList.remove("far");
+            heartIcon.classList.add("fas");
+            alert("Failed to remove color from favorites: " + err.message);
+          }
+        } else {
+          // Add to favorites
+          heartIcon.classList.remove("far");
+          heartIcon.classList.add("fas");
+          try {
+            await backend.add_color(currentHexCode);
+            // Update local state immediately
+            sidebarFavoriteColors.push({ hex_code: currentHexCode });
+            // Update all heart icons for this color across all .gen-color divs
+            updateAllHeartIconsForColor(currentHexCode, true);
+          } catch (err) {
+            heartIcon.classList.remove("fas");
+            heartIcon.classList.add("far");
+            alert("Failed to save color to favorites: " + err.message);
+          }
+        }
+      });
 
       if (window.innerWidth <= 768) {
         // On mobile/tablet, use two containers for left/right alignment
@@ -664,6 +781,7 @@ function generatePalette() {
         right.style.flex = "0 0 auto";
         right.appendChild(copyIcon);
         right.appendChild(dragIcon);
+        right.appendChild(heartIcon);
 
         div.appendChild(left);
         div.appendChild(right);
@@ -672,6 +790,7 @@ function generatePalette() {
         wrapper.appendChild(hexText);
         wrapper.appendChild(copyIcon);
         wrapper.appendChild(dragIcon);
+        wrapper.appendChild(heartIcon);
         wrapper.style.flexDirection = "column";
         wrapper.style.alignItems = "center";
         wrapper.style.justifyContent = "center";
@@ -728,6 +847,520 @@ document.getElementById("download-png").addEventListener("click", () => {
   });
 });
 
+document.getElementById("list-button").addEventListener("click", () => {
+  if (!userIsLoggedIn) {
+    alert("Please log in to access this feature.");
+    return;
+  }
+  openSidebarFavorites();
+});
+
+// ================================
+// Sidebar Management
+// ================================
+// Pill toggle logic for sidebar-favorites
+const pillPalettes = document.getElementById('pill-palettes');
+const pillColors = document.getElementById('pill-colors');
+const pillSlider = document.getElementById('pill-slider');
+const sidebarFavoritesList = document.getElementById('sidebar-favorites-list');
+
+const palettesList = [
+  '<p class="sidebar-favorites-placeholder">No favorite palettes yet.</p>'
+];
+const colorsList = [
+  '<p class="sidebar-favorites-placeholder">No favorite colors yet.</p>'
+];
+
+function setPillSliderToButton(button) {
+  const pillToggleRect = document.getElementById('pill-toggle').getBoundingClientRect();
+  const btnRect = button.getBoundingClientRect();
+  const expand = 6; // px
+  pillSlider.style.width = (btnRect.width + expand) + 'px';
+  pillSlider.style.height = (btnRect.height + expand) + 'px';
+  pillSlider.style.left = (btnRect.left - pillToggleRect.left - expand/2) + 'px';
+  pillSlider.style.top = (btnRect.top - pillToggleRect.top - expand/2) + 'px';
+}
+
+// Store palettes and colors for sidebar-favorites
+let sidebarFavoritePalettes = [];
+let sidebarFavoriteColors = [];
+
+// Fetch palettes for sidebar-favorites
+async function fetchSidebarFavoritePalettes() {
+  try {
+    const palettes = await backend.get_palettes();
+    sidebarFavoritePalettes = palettes;
+    renderSidebarFavoritePalettes();
+  } catch (err) {
+    sidebarFavoritePalettes = [];
+    renderSidebarFavoritePalettes();
+  }
+}
+
+// Fetch colors for sidebar-favorites
+async function fetchSidebarFavoriteColors() {
+  try {
+    const colors = await backend.get_colors();
+    sidebarFavoriteColors = colors;
+    renderSidebarFavoriteColors();
+  } catch (err) {
+    sidebarFavoriteColors = [];
+    renderSidebarFavoriteColors();
+  }
+}
+
+// Fetch all favorites from backend
+async function fetchFavoriteColorsFromBackend() {
+  try {
+    const colors = await backend.get_colors();
+    sidebarFavoriteColors = colors;
+    updateHeartIconsForColors(colors);
+  } catch (err) {
+    console.error("Error fetching favorite colors:", err);
+    sidebarFavoriteColors = [];
+  }
+}
+
+function renderSidebarFavoritePalettes() {
+  // Remove the pill active check - always render
+  if (!sidebarFavoritesPalettes) return;
+  
+  if (!sidebarFavoritePalettes || sidebarFavoritePalettes.length === 0) {
+    sidebarFavoritesPalettes.innerHTML = '<p class="sidebar-favorites-placeholder fade-in">No favorite palettes yet.</p>';
+    return;
+  }
+  sidebarFavoritesPalettes.innerHTML = sidebarFavoritePalettes.map((palette, idx) => {
+    const colors = (palette.colors || []).map(color => `<div class="sidebar-fav-color-box" style="background:${color}"></div>`).join('');
+    // Use a unique id for the input
+    return `
+      <div class="sidebar-fav-palette-card" data-idx="${idx}">
+        <div class="sidebar-fav-palette-header">
+          <input class="sidebar-fav-palette-title-input" value="${palette.title || 'Untitled'}" data-idx="${idx}" />
+          <div class="sidebar-fav-palette-actions">
+            <i class="fas fa-expand sidebar-fav-expand-btn" title="Load Palette" data-idx="${idx}"></i>
+            <i class="fas fa-trash-alt sidebar-fav-delete-btn" title="Remove" data-idx="${idx}"></i>
+          </div>
+        </div>
+        <div class="sidebar-fav-palette-colors">${colors}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Add event listeners for title editing
+  document.querySelectorAll('.sidebar-fav-palette-title-input').forEach(input => {
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        input.blur();
+      }
+    });
+    input.addEventListener('blur', async (e) => {
+      const idx = parseInt(input.dataset.idx, 10);
+      const palette = sidebarFavoritePalettes[idx];
+      const newTitle = input.value.trim() || 'Untitled';
+      if (newTitle !== palette.title) {
+        const oldTitle = palette.title;
+        input.disabled = true;
+        try {
+          await backend.update_palette_title(palette.colors, newTitle);
+          palette.title = newTitle;
+        } catch (err) {
+          alert('Failed to update title.');
+          input.value = oldTitle;
+        }
+        input.disabled = false;
+      }
+    });
+  });
+
+  // Add event listeners for expand button
+  document.querySelectorAll('.sidebar-fav-expand-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const palette = sidebarFavoritePalettes[idx];
+      loadPaletteToMain(palette);
+      closeSidebarFavorites();
+    });
+  });
+
+  // Add event listeners for delete button
+  document.querySelectorAll('.sidebar-fav-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const palette = sidebarFavoritePalettes[idx];
+      const card = btn.closest('.sidebar-fav-palette-card');
+      // Animate out
+      card.classList.add('fade-out');
+      // Remove from array immediately so it never reappears
+      sidebarFavoritePalettes.splice(idx, 1);
+      // After animation, re-render
+      setTimeout(() => {
+        renderSidebarFavoritePalettes();
+        // If no palettes left, fade in placeholder
+        if (sidebarFavoritePalettes.length === 0) {
+          const placeholder = document.querySelector('.sidebar-favorites-placeholder');
+          if (placeholder) {
+            setTimeout(() => placeholder.classList.add('fade-in'), 10);
+          }
+        }
+      }, 400);
+      // Call backend (after UI update for UX)
+      try {
+        await backend.delete_palette(palette.colors);
+        fetchFavoritesFromBackend(); // Also update dropdown
+      } catch (err) {
+        // Optionally show error, but do not re-add palette to UI
+        alert('Failed to delete palette.');
+      }
+    });
+  });
+}
+
+// Function to load a palette to the main area (same logic as dropdown)
+function loadPaletteToMain(palette) {
+  const colorDivs = document.querySelectorAll(".gen-color");
+  palette.colors.forEach((color, i) => {
+    const div = colorDivs[i];
+    if (!div) return;
+    div.innerHTML = "";
+    div.style.backgroundColor = color;
+    const textColor = chroma(color).luminance() > 0.5 ? "#000" : "#fff";
+    const wrapper = document.createElement("div");
+    wrapper.className = "hex-wrapper";
+    wrapper.style.display = "flex";
+    wrapper.style.alignItems = "center";
+    wrapper.style.gap = "6px";
+    const hexText = document.createElement("span");
+    hexText.className = "hex-code";
+    hexText.innerText = color.replace(/^#/, "");
+    hexText.style.color = textColor;
+    // Attach event listeners BEFORE appending to DOM
+    hexText.tabIndex = 0;
+    hexText.addEventListener("click", () => switchToInput());
+    hexText.addEventListener("touchend", (e) => {
+      if (e.cancelable && e.touches && e.touches.length > 0) {
+        e.preventDefault();
+      }
+      switchToInput();
+    });
+    hexText.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        switchToInput();
+      }
+    });
+    const copyIcon = document.createElement("i");
+    copyIcon.className = "fas fa-copy copy-icon";
+    copyIcon.style.color = textColor;
+    copyIcon.title = "Copy to clipboard";
+    copyIcon.onclick = () => {
+      navigator.clipboard.writeText(color.replace(/^#/, "").toUpperCase()).then(() => {
+        copyIcon.classList.replace("fa-copy", "fa-check");
+        setTimeout(() => {
+          copyIcon.classList.replace("fa-check", "fa-copy");
+        }, 1000);
+      });
+    };
+    const dragIcon = document.createElement("i");
+    dragIcon.className = "fa-solid fa-left-right";
+    dragIcon.style.color = textColor;
+    dragIcon.style.fontSize = "1.2rem";
+    dragIcon.title = "Drag to reorder";
+    dragIcon.style.cursor = 'grab';
+
+    // Create heart icon for individual color favorites
+    const heartIcon = document.createElement("i");
+    heartIcon.className = "far fa-heart color-heart-icon";
+    heartIcon.style.color = textColor;
+    heartIcon.title = "Save color to favorites";
+    if (userIsLoggedIn) {
+      heartIcon.style.display = "block";
+      heartIcon.classList.remove('hidden');
+      // Check if this color is already in favorites
+      const currentHexCode = color.replace(/^#/, "").toUpperCase();
+      const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+      if (favoriteHexCodes.includes(currentHexCode)) {
+        heartIcon.classList.remove('far');
+        heartIcon.classList.add('fas');
+      }
+    } else {
+      heartIcon.style.display = "none";
+      heartIcon.classList.add('hidden');
+    }
+    
+    // Add click event for heart icon
+    heartIcon.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (!userIsLoggedIn) {
+        alert("Please log in to save favorite colors.");
+        return;
+      }
+      
+      // Get current hex value from input or span
+      let currentHexCode = null;
+      const input = div.querySelector(".hex-input");
+      const span = div.querySelector(".hex-code");
+      if (input && document.activeElement === input) {
+        currentHexCode = input.value.toUpperCase();
+      } else if (span) {
+        currentHexCode = span.innerText.toUpperCase();
+      }
+      
+      if (!currentHexCode || currentHexCode.length === 0) {
+        alert("Invalid color code.");
+        return;
+      }
+      
+      const isLiked = heartIcon.classList.contains("fas");
+      
+      if (isLiked) {
+        // Remove from favorites
+        heartIcon.classList.remove("fas");
+        heartIcon.classList.add("far");
+        try {
+          await backend.delete_color(currentHexCode);
+          // Update local state immediately to prevent flicker
+          sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== currentHexCode);
+          // Update all heart icons for this color across all .gen-color divs
+          updateAllHeartIconsForColor(currentHexCode, false);
+        } catch (err) {
+          heartIcon.classList.remove("far");
+          heartIcon.classList.add("fas");
+          alert("Failed to remove color from favorites: " + err.message);
+        }
+      } else {
+        // Add to favorites
+        heartIcon.classList.remove("far");
+        heartIcon.classList.add("fas");
+        try {
+          await backend.add_color(currentHexCode);
+          // Update local state immediately
+          sidebarFavoriteColors.push({ hex_code: currentHexCode });
+          // Update all heart icons for this color across all .gen-color divs
+          updateAllHeartIconsForColor(currentHexCode, true);
+        } catch (err) {
+          heartIcon.classList.remove("fas");
+          heartIcon.classList.add("far");
+          alert("Failed to save color to favorites: " + err.message);
+        }
+      }
+    });
+
+    if (window.innerWidth <= 768) {
+      // Use same structure as generatePalette for mobile
+      const left = document.createElement("div");
+      left.className = "hex-left";
+      left.style.display = "flex";
+      left.style.alignItems = "center";
+      left.style.flex = "1 1 auto";
+      left.appendChild(hexText);
+
+      const right = document.createElement("div");
+      right.className = "hex-right";
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+      right.style.gap = "12px";
+      right.style.flex = "0 0 auto";
+      right.appendChild(copyIcon);
+      right.appendChild(dragIcon);
+      right.appendChild(heartIcon);
+
+      div.appendChild(left);
+      div.appendChild(right);
+    } else {
+      wrapper.appendChild(hexText);
+      wrapper.appendChild(copyIcon);
+      wrapper.appendChild(dragIcon);
+      wrapper.appendChild(heartIcon);
+      wrapper.style.flexDirection = "column";
+      wrapper.style.alignItems = "center";
+      wrapper.style.justifyContent = "center";
+      div.appendChild(wrapper);
+    }
+    div.style.display = "flex";
+    div.style.flexDirection = window.innerWidth <= 768 ? "row" : "column";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "center";
+  });
+  toggleLikeButton(true);
+  initDragAndDrop();
+}
+
+// Helper to show the correct panel
+function setSidebarPanel(section) {
+  const palettesPanel = document.getElementById('sidebar-favorites-palettes');
+  const colorsPanel = document.getElementById('sidebar-favorites-colors');
+  
+  if (!palettesPanel || !colorsPanel) return;
+  
+  if (section === 'palettes') {
+    palettesPanel.classList.add('active');
+    colorsPanel.classList.remove('active');
+  } else {
+    palettesPanel.classList.remove('active');
+    colorsPanel.classList.add('active');
+  }
+}
+
+function setPillSelected(option) {
+  if (option === 'palettes') {
+    pillPalettes.classList.add('active');
+    pillColors.classList.remove('active');
+    setPillSliderToButton(pillPalettes);
+    // Add small delay for smooth animation
+    setTimeout(() => setSidebarPanel('palettes'), 50);
+  } else {
+    pillPalettes.classList.remove('active');
+    pillColors.classList.add('active');
+    setPillSliderToButton(pillColors);
+    // Add small delay for smooth animation
+    setTimeout(() => setSidebarPanel('colors'), 50);
+  }
+}
+
+// On window resize, keep slider in sync
+window.addEventListener('resize', () => {
+  if (pillPalettes.classList.contains('active')) {
+    setPillSliderToButton(pillPalettes);
+  } else {
+    setPillSliderToButton(pillColors);
+  }
+});
+
+function updateSidebarFavoritesList(list) {
+  if (list.length === 1 && list[0].includes('sidebar-favorites-placeholder')) {
+    sidebarFavoritesList.innerHTML = list[0];
+  } else {
+    sidebarFavoritesList.innerHTML = list.map(item => `<li>${item}</li>`).join('');
+  }
+}
+
+pillPalettes.addEventListener('click', () => setPillSelected('palettes'));
+pillColors.addEventListener('click', () => setPillSelected('colors'));
+
+// --- Swipe gesture support for sidebar-favorites (mobile) ---
+let touchStartX = null;
+let touchStartY = null;
+let touchMoved = false;
+
+const sidebar = document.getElementById('sidebar-favorites');
+
+function handleSidebarTouchStart(e) {
+  if (e.touches.length !== 1) return;
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+  touchMoved = false;
+}
+
+function handleSidebarTouchMove(e) {
+  if (touchStartX === null) return;
+  const dx = e.touches[0].clientX - touchStartX;
+  const dy = e.touches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20) {
+    touchMoved = true;
+    e.preventDefault();
+  }
+}
+
+function handleSidebarTouchEnd(e) {
+  if (touchStartX === null || !touchMoved) {
+    touchStartX = null;
+    touchStartY = null;
+    return;
+  }
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const isPalettesActive = pillPalettes.classList.contains('active');
+  
+  if (dx < -40) {
+    // Swipe left: if on Palettes, go to Colors
+    if (isPalettesActive) {
+      setPillSelected('colors');
+    }
+  } else if (dx > 40) {
+    // Swipe right: if on Colors, go to Palettes; if on Palettes, close sidebar
+    if (isPalettesActive) {
+      closeSidebarFavorites();
+    } else {
+      setPillSelected('palettes');
+    }
+  }
+  touchStartX = null;
+  touchStartY = null;
+  touchMoved = false;
+}
+
+function enableSidebarSwipe() {
+  if (!sidebar) return;
+  sidebar.addEventListener('touchstart', handleSidebarTouchStart, { passive: false });
+  sidebar.addEventListener('touchmove', handleSidebarTouchMove, { passive: false });
+  sidebar.addEventListener('touchend', handleSidebarTouchEnd, { passive: false });
+}
+
+function disableSidebarSwipe() {
+  if (!sidebar) return;
+  sidebar.removeEventListener('touchstart', handleSidebarTouchStart);
+  sidebar.removeEventListener('touchmove', handleSidebarTouchMove);
+  sidebar.removeEventListener('touchend', handleSidebarTouchEnd);
+}
+
+// Enable swipe only on mobile
+function checkSidebarSwipe() {
+  if (window.innerWidth <= 768) {
+    enableSidebarSwipe();
+  } else {
+    disableSidebarSwipe();
+  }
+}
+window.addEventListener('resize', checkSidebarSwipe);
+document.addEventListener('DOMContentLoaded', checkSidebarSwipe);
+
+// Ensure Palettes is selected by default when sidebar opens
+function openSidebarFavorites() {
+  const sidebar = document.getElementById('sidebar-favorites');
+  const sidebarBackdrop = document.getElementById('sidebar-favorites-backdrop');
+  const body = document.body;
+  
+  sidebar.classList.add('open');
+  body.classList.add('sidebar-favorites-open');
+  // Always show backdrop on all screen sizes
+  sidebarBackdrop.classList.add('active');
+  setPillSelected('palettes');
+  // Ensure both panels are positioned correctly
+  setTimeout(() => setSidebarPanel('palettes'), 100);
+  fetchSidebarFavoritePalettes();
+  fetchSidebarFavoriteColors();
+  // Render both sections immediately
+  renderSidebarFavoritePalettes();
+  renderSidebarFavoriteColors();
+}
+
+function closeSidebarFavorites() {
+  const sidebar = document.getElementById('sidebar-favorites');
+  const sidebarBackdrop = document.getElementById('sidebar-favorites-backdrop');
+  const body = document.body;
+  
+  sidebar.classList.remove('open');
+  body.classList.remove('sidebar-favorites-open');
+  sidebarBackdrop.classList.remove('active');
+}
+
+// Close sidebar when clicking the close button
+document.getElementById('close-sidebar-favorites').addEventListener('click', closeSidebarFavorites);
+
+// Close sidebar when clicking the backdrop (mobile)
+document.getElementById('sidebar-favorites-backdrop').addEventListener('click', closeSidebarFavorites);
+
+// Close sidebar when pressing Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const sidebar = document.getElementById('sidebar-favorites');
+    if (sidebar.classList.contains('open')) {
+      closeSidebarFavorites();
+    }
+  }
+});
+
 // ================================
 // Favorites Management
 // ================================
@@ -759,12 +1392,15 @@ async function fetchFavoritesFromBackend() {
     updateFavoritesDropdown(palettes);
 
     const colorDivs = document.querySelectorAll(".gen-color");
-    const current = Array.from(colorDivs, div => {
-      const hexSpan = div.querySelector(".hex-code");
-      return hexSpan ? ("#" + hexSpan.innerText.toUpperCase()) : null;
-    }).filter(Boolean);
-    const found = palettes.some(p => palettesMatch(p.colors, current));
-    toggleLikeButton(found);
+    // Only proceed if colorDivs exist
+    if (colorDivs && colorDivs.length > 0) {
+      const current = Array.from(colorDivs, div => {
+        const hexSpan = div.querySelector(".hex-code");
+        return hexSpan ? ("#" + hexSpan.innerText.toUpperCase()) : null;
+      }).filter(Boolean);
+      const found = palettes.some(p => palettesMatch(p.colors, current));
+      toggleLikeButton(found);
+    }
   } catch (err) {
     console.error("Error fetching favorites:", err);
   }
@@ -919,7 +1555,7 @@ function updateFavoritesDropdown(palettes = []) {
         copyIcon.style.color = textColor;
         copyIcon.title = "Copy to clipboard";
         copyIcon.onclick = () => {
-          navigator.clipboard.writeText(color.toUpperCase()).then(() => {
+          navigator.clipboard.writeText(color.replace(/^#/, "").toUpperCase()).then(() => {
             copyIcon.classList.replace("fa-copy", "fa-check");
             setTimeout(() => {
               copyIcon.classList.replace("fa-check", "fa-copy");
@@ -932,6 +1568,86 @@ function updateFavoritesDropdown(palettes = []) {
         dragIcon.style.fontSize = "1.2rem";
         dragIcon.title = "Drag to reorder";
         dragIcon.style.cursor = 'grab';
+
+        // Create heart icon for individual color favorites
+        const heartIcon = document.createElement("i");
+        heartIcon.className = "far fa-heart color-heart-icon";
+        heartIcon.style.color = textColor;
+        heartIcon.title = "Save color to favorites";
+        if (userIsLoggedIn) {
+          heartIcon.style.display = "block";
+          heartIcon.classList.remove('hidden');
+          // Check if this color is already in favorites
+          const currentHexCode = color.replace(/^#/, "").toUpperCase();
+          const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+          if (favoriteHexCodes.includes(currentHexCode)) {
+            heartIcon.classList.remove('far');
+            heartIcon.classList.add('fas');
+          }
+        } else {
+          heartIcon.style.display = "none";
+          heartIcon.classList.add('hidden');
+        }
+        
+        // Add click event for heart icon
+        heartIcon.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          if (!userIsLoggedIn) {
+            alert("Please log in to save favorite colors.");
+            return;
+          }
+          
+          // Get current hex value from input or span
+          let currentHexCode = null;
+          const input = div.querySelector(".hex-input");
+          const span = div.querySelector(".hex-code");
+          if (input && document.activeElement === input) {
+            currentHexCode = input.value.toUpperCase();
+          } else if (span) {
+            currentHexCode = span.innerText.toUpperCase();
+          }
+          
+          if (!currentHexCode || currentHexCode.length === 0) {
+            alert("Invalid color code.");
+            return;
+          }
+          
+          const isLiked = heartIcon.classList.contains("fas");
+          
+          if (isLiked) {
+            // Remove from favorites
+            heartIcon.classList.remove("fas");
+            heartIcon.classList.add("far");
+            try {
+              await backend.delete_color(currentHexCode);
+              // Update local state immediately to prevent flicker
+              sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== currentHexCode);
+              // Update all heart icons for this color across all .gen-color divs
+              updateAllHeartIconsForColor(currentHexCode, false);
+            } catch (err) {
+              heartIcon.classList.remove("far");
+              heartIcon.classList.add("fas");
+              alert("Failed to remove color from favorites: " + err.message);
+            }
+          } else {
+            // Add to favorites
+            heartIcon.classList.remove("far");
+            heartIcon.classList.add("fas");
+            try {
+              await backend.add_color(currentHexCode);
+              // Update local state immediately
+              sidebarFavoriteColors.push({ hex_code: currentHexCode });
+              // Update all heart icons for this color across all .gen-color divs
+              updateAllHeartIconsForColor(currentHexCode, true);
+            } catch (err) {
+              heartIcon.classList.remove("fas");
+              heartIcon.classList.add("far");
+              alert("Failed to save color to favorites: " + err.message);
+            }
+          }
+        });
 
         if (window.innerWidth <= 768) {
           // Use same structure as generatePalette for mobile
@@ -950,6 +1666,7 @@ function updateFavoritesDropdown(palettes = []) {
           right.style.flex = "0 0 auto";
           right.appendChild(copyIcon);
           right.appendChild(dragIcon);
+          right.appendChild(heartIcon);
 
           div.appendChild(left);
           div.appendChild(right);
@@ -957,6 +1674,7 @@ function updateFavoritesDropdown(palettes = []) {
           wrapper.appendChild(hexText);
           wrapper.appendChild(copyIcon);
           wrapper.appendChild(dragIcon);
+          wrapper.appendChild(heartIcon);
           wrapper.style.flexDirection = "column";
           wrapper.style.alignItems = "center";
           wrapper.style.justifyContent = "center";
@@ -1006,47 +1724,6 @@ function updateFavoritesDropdown(palettes = []) {
     console.warn("No favorites rendered, showing placeholder.");
   }
 }
-
-// ================================
-// Favorites Dropdown Toggle
-// ================================
-document.addEventListener("DOMContentLoaded", async () => {
-  const favoritesToggle = document.getElementById("favorites-dropdown-toggle");
-  const favoritesDropdown = document.getElementById("favorites-dropdown");
-  const favoritesBackdrop = document.getElementById("favorites-backdrop");
-  const logoutButton = document.getElementById("logout");
-
-  if (favoritesToggle && favoritesDropdown && favoritesBackdrop) {
-    favoritesToggle.classList.remove("disabled");
-    favoritesToggle.addEventListener("click", () => {
-      favoritesDropdown.classList.remove("hidden");
-      const isOpen = favoritesDropdown.classList.toggle("show");
-      if (isOpen) {
-        favoritesBackdrop.classList.add("active");
-      } else {
-        favoritesBackdrop.classList.remove("active");
-      }
-      if (isOpen) {
-        favoritesToggle.classList.add("rotated");
-      } else {
-        favoritesToggle.classList.remove("rotated");
-      }
-    });
-  }
-  await loadPalettes();
-  generatePalette();
-});
-
-document.addEventListener("click", (e) => {
-  const toggle = document.getElementById("favorites-dropdown-toggle");
-  const dropdown = document.getElementById("favorites-dropdown");
-  const backdrop = document.getElementById("favorites-backdrop");
-  if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
-    dropdown.classList.remove("show");
-    if (backdrop) backdrop.classList.remove("active");
-    toggle.classList.remove("rotated");
-  }
-});
 
 // ================================
 // Like Button (Favorite Toggle)
@@ -1223,7 +1900,11 @@ function updateIdentityDisplay(principal) {
   tooltip.style.display = "";
   logoutButton.classList.remove("disabled");
   updateFavoritesUI(true);
-  fetchFavoritesFromBackend();
+  // Only fetch favorites if DOM is ready
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    fetchFavoritesFromBackend();
+    fetchFavoriteColorsFromBackend();
+  }
 }
 
 // ================================
@@ -1232,17 +1913,29 @@ function updateIdentityDisplay(principal) {
 function updateFavoritesUI(isLoggedIn) {
   const wrapper = document.getElementById('favorites-wrapper');
   const likeBtn = document.getElementById('like-button');
-  const dropdownToggle = document.getElementById('favorites-dropdown-toggle');
+  const listBtn = document.getElementById('list-button');
 
   if (isLoggedIn) {
     wrapper.classList.remove('favorites-disabled');
     likeBtn.classList.remove('disabled');
-    dropdownToggle.classList.remove('disabled');
+    listBtn.classList.remove('disabled');
   } else {
     wrapper.classList.add('favorites-disabled');
     likeBtn.classList.add('disabled');
-    dropdownToggle.classList.add('disabled');
+    listBtn.classList.add('disabled');
   }
+
+  // Update individual color heart icons
+  const heartIcons = document.querySelectorAll('.color-heart-icon');
+  heartIcons.forEach(icon => {
+    if (isLoggedIn) {
+      icon.style.display = 'block';
+      icon.classList.remove('hidden');
+    } else {
+      icon.style.display = 'none';
+      icon.classList.add('hidden');
+    }
+  });
 }
 
 let tooltipHideTimeout = null;
@@ -1295,12 +1988,25 @@ function hideTooltip() {
 
 initAuth();
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    generatePalette();
-  });
-} else {
+async function initialPaletteLoad() {
+  // Initialize sidebar variables
+  sidebarFavoritesSlider = document.getElementById('sidebar-favorites-slider');
+  sidebarFavoritesPalettes = document.getElementById('sidebar-favorites-palettes');
+  sidebarFavoritesColors = document.getElementById('sidebar-favorites-colors');
+  
+  await loadPalettes();
   generatePalette();
+  // Fetch favorites after DOM is ready
+  if (userIsLoggedIn) {
+    fetchFavoritesFromBackend();
+    fetchFavoriteColorsFromBackend();
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initialPaletteLoad);
+} else {
+  initialPaletteLoad();
 }
 
 const generateBtn = document.getElementById("generate");
@@ -1322,3 +2028,367 @@ if (generateBtn) {
     ripple.addEventListener('animationend', () => ripple.remove());
   });
 }
+
+// Render favorite colors in sidebar
+function renderSidebarFavoriteColors() {
+  // Remove the pill active check - always render
+  if (!sidebarFavoritesColors) return;
+  
+  if (!sidebarFavoriteColors || sidebarFavoriteColors.length === 0) {
+    sidebarFavoritesColors.innerHTML = '<p class="sidebar-favorites-placeholder fade-in">No favorite colors yet.</p>';
+    return;
+  }
+  sidebarFavoritesColors.innerHTML = sidebarFavoriteColors.map((color, idx) => {
+    return `
+      <div class="sidebar-fav-color-card" data-idx="${idx}">
+        <div class="sidebar-fav-color-header-row">
+          <input class="sidebar-fav-color-title-input" value="${color.title ? color.title.replace(/\"/g, '&quot;') : 'Untitled'}" data-idx="${idx}" />
+          <div class="sidebar-fav-color-actions">
+            <i class="fas fa-copy sidebar-fav-color-copy-btn" title="Copy" data-idx="${idx}"></i>
+            <i class="fas fa-trash-alt sidebar-fav-color-delete-btn" title="Remove" data-idx="${idx}"></i>
+          </div>
+        </div>
+        <div class="sidebar-fav-color-row">
+          <div class="sidebar-fav-color-box" style="background:#${color.hex_code}"></div>
+          <div class="sidebar-fav-color-hex">#${color.hex_code}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Add event listeners for delete button
+  document.querySelectorAll('.sidebar-fav-color-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const color = sidebarFavoriteColors[idx];
+      const card = btn.closest('.sidebar-fav-color-card');
+      // Animate out
+      card.classList.add('fade-out');
+      // Remove from array immediately so it never reappears
+      sidebarFavoriteColors.splice(idx, 1);
+      // After animation, re-render
+      setTimeout(() => {
+        renderSidebarFavoriteColors();
+        // If no colors left, fade in placeholder
+        if (sidebarFavoriteColors.length === 0) {
+          const placeholder = document.querySelector('.sidebar-favorites-placeholder');
+          if (placeholder) {
+            setTimeout(() => placeholder.classList.add('fade-in'), 10);
+          }
+        }
+      }, 400);
+      // Call backend (after UI update for UX)
+      try {
+        await backend.delete_color(color.hex_code);
+        fetchFavoriteColorsFromBackend(); // Also update heart icons
+      } catch (err) {
+        // Optionally show error, but do not re-add color to UI
+        alert('Failed to delete color.');
+      }
+    });
+  });
+
+  // Add event listeners for copy button
+  document.querySelectorAll('.sidebar-fav-color-copy-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const idx = parseInt(btn.dataset.idx, 10);
+      const color = sidebarFavoriteColors[idx];
+      if (!color || !color.hex_code) return;
+      try {
+        await navigator.clipboard.writeText(color.hex_code.toUpperCase());
+        btn.classList.remove('fa-copy');
+        btn.classList.add('fa-check');
+        setTimeout(() => {
+          btn.classList.remove('fa-check');
+          btn.classList.add('fa-copy');
+        }, 1000);
+      } catch (err) {
+        alert('Failed to copy color.');
+      }
+    });
+  });
+
+  // Add event listeners for color title editing (interactivity only, backend call is a placeholder)
+  document.querySelectorAll('.sidebar-fav-color-title-input').forEach(input => {
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        input.blur();
+      }
+    });
+    input.addEventListener('blur', async (e) => {
+      const idx = parseInt(input.dataset.idx, 10);
+      const color = sidebarFavoriteColors[idx];
+      const newTitle = input.value.trim() || 'Untitled';
+      if (newTitle !== color.title) {
+        input.disabled = true;
+        try {
+          await backend.update_color_title(color.hex_code, newTitle);
+          color.title = newTitle;
+        } catch (err) {
+          alert('Failed to update color title.');
+          input.value = color.title;
+        }
+        input.disabled = false;
+      }
+    });
+  });
+}
+
+// Update heart icons based on favorite colors
+function updateHeartIconsForColors(colors) {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  const favoriteHexCodes = colors.map(c => c.hex_code.toUpperCase());
+  
+  colorDivs.forEach(div => {
+    const heartIcon = div.querySelector('.color-heart-icon');
+    if (!heartIcon) return;
+    
+    const hexSpan = div.querySelector('.hex-code');
+    const hexInput = div.querySelector('.hex-input');
+    
+    let currentHexCode = null;
+    if (hexInput && document.activeElement === hexInput) {
+      currentHexCode = hexInput.value.toUpperCase();
+    } else if (hexSpan) {
+      currentHexCode = hexSpan.innerText.toUpperCase();
+    }
+    
+    if (currentHexCode && favoriteHexCodes.includes(currentHexCode)) {
+      heartIcon.classList.remove('far');
+      heartIcon.classList.add('fas');
+    } else {
+      heartIcon.classList.remove('fas');
+      heartIcon.classList.add('far');
+    }
+  });
+}
+
+// Helper to slide the slider
+function setSidebarSlider(section) {
+  if (!sidebarFavoritesSlider) return;
+  if (section === 'palettes') {
+    sidebarFavoritesSlider.style.transform = 'translateX(0)';
+  } else {
+    sidebarFavoritesSlider.style.transform = 'translateX(-50%)';
+  }
+}
+
+// Update all heart icons for a specific color across all .gen-color divs
+function updateAllHeartIconsForColor(hexCode, isFavorite) {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  colorDivs.forEach(div => {
+    const heartIcon = div.querySelector('.color-heart-icon');
+    if (!heartIcon) return;
+    
+    // Get the current hex value for this div
+    let currentHexCode = null;
+    const input = div.querySelector(".hex-input");
+    const span = div.querySelector(".hex-code");
+    if (input && document.activeElement === input) {
+      currentHexCode = input.value.toUpperCase();
+    } else if (span) {
+      currentHexCode = span.innerText.toUpperCase();
+    }
+    
+    // If this div has the same hex code, update its heart icon
+    if (currentHexCode === hexCode.toUpperCase()) {
+      if (isFavorite) {
+        heartIcon.classList.remove('far');
+        heartIcon.classList.add('fas');
+      } else {
+        heartIcon.classList.remove('fas');
+        heartIcon.classList.add('far');
+      }
+    }
+  });
+}
+
+// ================================
+// Layout Mode Change Handling for .gen-color Icons
+// ================================
+
+// Track current layout mode (vertical/mobile or horizontal/desktop)
+let currentLayoutVertical = window.innerWidth <= 768;
+
+function isCurrentVerticalMode() {
+  return window.innerWidth <= 768;
+}
+
+function rebuildGenColorDOMForLayout() {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  colorDivs.forEach(div => {
+    // Get current color and hex value
+    let color = div.style.backgroundColor;
+    let hex = null;
+    const input = div.querySelector('.hex-input');
+    const span = div.querySelector('.hex-code');
+    if (input && document.activeElement === input) {
+      hex = input.value.toUpperCase();
+    } else if (span) {
+      hex = span.innerText.toUpperCase();
+    } else {
+      // fallback: try to get from <b>Color N</b>
+      const b = div.querySelector('b');
+      if (b) hex = null;
+    }
+    // If color is not a hex, try to get from hex
+    if (!color && hex) {
+      color = '#' + hex;
+    }
+    // If color is rgb(), convert to hex
+    if (color && color.startsWith('rgb')) {
+      const rgb = color.match(/\d+/g);
+      if (rgb && rgb.length >= 3) {
+        color = '#' + rgb.slice(0,3).map(x => (+x).toString(16).padStart(2, '0')).join('').toUpperCase();
+      }
+    }
+    // If still no hex, fallback to #000000
+    if (!hex) {
+      hex = '000000';
+    }
+    // Remove all children
+    div.innerHTML = '';
+    // Set background color
+    div.style.backgroundColor = color || ('#' + hex);
+    // Determine text color for contrast
+    let textColor = '#fff';
+    try {
+      textColor = chroma(color || ('#' + hex)).luminance() > 0.5 ? '#000' : '#fff';
+    } catch (e) {}
+    // Build DOM structure for current layout
+    if (isCurrentVerticalMode()) {
+      // Mobile/tablet: left/right layout, icons always visible
+      const left = document.createElement('div');
+      left.className = 'hex-left';
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+      left.style.flex = '1 1 auto';
+      const hexText = document.createElement('span');
+      hexText.className = 'hex-code';
+      hexText.innerText = hex;
+      hexText.style.color = textColor;
+      left.appendChild(hexText);
+      const right = document.createElement('div');
+      right.className = 'hex-right';
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '12px';
+      right.style.flex = '0 0 auto';
+      // Copy icon
+      const copyIcon = document.createElement('i');
+      copyIcon.className = 'fas fa-copy copy-icon';
+      copyIcon.style.color = textColor;
+      copyIcon.title = 'Copy to clipboard';
+      copyIcon.onclick = () => {
+        navigator.clipboard.writeText(hex).then(() => {
+          copyIcon.classList.replace('fa-copy', 'fa-check');
+          setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
+        });
+      };
+      // Drag icon
+      const dragIcon = document.createElement('i');
+      dragIcon.className = 'fa-solid fa-left-right';
+      dragIcon.style.color = textColor;
+      dragIcon.style.fontSize = '1.2rem';
+      dragIcon.title = 'Drag to reorder';
+      dragIcon.style.cursor = 'grab';
+      // Heart icon
+      const heartIcon = document.createElement('i');
+      heartIcon.className = 'far fa-heart color-heart-icon';
+      heartIcon.style.color = textColor;
+      heartIcon.title = 'Save color to favorites';
+      if (userIsLoggedIn) {
+        heartIcon.style.display = 'block';
+        heartIcon.classList.remove('hidden');
+        // Check if this color is already in favorites
+        const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+        if (favoriteHexCodes.includes(hex)) {
+          heartIcon.classList.remove('far');
+          heartIcon.classList.add('fas');
+        }
+      } else {
+        heartIcon.style.display = 'none';
+        heartIcon.classList.add('hidden');
+      }
+      right.appendChild(copyIcon);
+      right.appendChild(dragIcon);
+      right.appendChild(heartIcon);
+      div.appendChild(left);
+      div.appendChild(right);
+      // Always show icons in vertical mode
+      [copyIcon, dragIcon, heartIcon].forEach(icon => {
+        icon.style.opacity = '1';
+        icon.style.pointerEvents = 'auto';
+      });
+    } else {
+      // Desktop: vertical stack, icons only on hover (CSS handles opacity)
+      const wrapper = document.createElement('div');
+      wrapper.className = 'hex-wrapper';
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.justifyContent = 'center';
+      wrapper.style.gap = '6px';
+      const hexText = document.createElement('span');
+      hexText.className = 'hex-code';
+      hexText.innerText = hex;
+      hexText.style.color = textColor;
+      // Copy icon
+      const copyIcon = document.createElement('i');
+      copyIcon.className = 'fas fa-copy copy-icon';
+      copyIcon.style.color = textColor;
+      copyIcon.title = 'Copy to clipboard';
+      copyIcon.onclick = () => {
+        navigator.clipboard.writeText(hex).then(() => {
+          copyIcon.classList.replace('fa-copy', 'fa-check');
+          setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
+        });
+      };
+      // Drag icon
+      const dragIcon = document.createElement('i');
+      dragIcon.className = 'fa-solid fa-left-right';
+      dragIcon.style.color = textColor;
+      dragIcon.style.fontSize = '1.2rem';
+      dragIcon.title = 'Drag to reorder';
+      dragIcon.style.cursor = 'grab';
+      // Heart icon
+      const heartIcon = document.createElement('i');
+      heartIcon.className = 'far fa-heart color-heart-icon';
+      heartIcon.style.color = textColor;
+      heartIcon.title = 'Save color to favorites';
+      if (userIsLoggedIn) {
+        heartIcon.style.display = 'block';
+        heartIcon.classList.remove('hidden');
+        const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+        if (favoriteHexCodes.includes(hex)) {
+          heartIcon.classList.remove('far');
+          heartIcon.classList.add('fas');
+        }
+      } else {
+        heartIcon.style.display = 'none';
+        heartIcon.classList.add('hidden');
+      }
+      wrapper.appendChild(hexText);
+      wrapper.appendChild(copyIcon);
+      wrapper.appendChild(dragIcon);
+      wrapper.appendChild(heartIcon);
+      div.appendChild(wrapper);
+      // Let CSS handle icon visibility (opacity on hover)
+      [copyIcon, dragIcon, heartIcon].forEach(icon => {
+        icon.style.opacity = '';
+        icon.style.pointerEvents = '';
+      });
+    }
+  });
+  enforceGenColorLayout();
+  initDragAndDrop();
+}
+
+// Listen for window resize and update layout if mode changes
+window.addEventListener('resize', () => {
+  const vertical = isCurrentVerticalMode();
+  if (vertical !== currentLayoutVertical) {
+    currentLayoutVertical = vertical;
+    rebuildGenColorDOMForLayout();
+  }
+});

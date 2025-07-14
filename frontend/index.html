@@ -53,24 +53,10 @@
 
       <!-- Right section of the toolbar -->
       <div class="toolbar-right">
-        <!-- NEW wrapper for positioning -->
-        <div id="favorites-wrapper" class="toolbar-functions favorites-wrapper">
+        <!-- All toolbar icons in one container -->
+        <div id="favorites-wrapper" class="toolbar-functions">
           <i id="like-button" class="far fa-heart toolbar-function disabled" title="Save to Favorites"></i>
-          <i id="favorites-dropdown-toggle" class="fas fa-chevron-down toolbar-function disabled" title="Show Favorites"></i>
-
-          <!-- Dropdown window for favorites -->
-          <div id="favorites-backdrop" class="favorites-backdrop"></div>
-          <div id="favorites-dropdown" class="favorites-dropdown">
-            <div class="favorites-scroll-container">
-              <p class="dropdown-placeholder">No favorites saved yet.</p>
-              <!-- dynamically added favorites go here -->
-            </div>
-          </div>
-        </div>
-        
-
-        <!-- Remaining toolbar icons -->
-        <div class="toolbar-functions">
+          <i id="list-button" class="fas fa-list-ul toolbar-function disabled" title="Show List"></i>
           <i id="copy-all" class="fas fa-copy toolbar-function" title="Copy All"></i>
           <i id="download-png" class="fas fa-download toolbar-function" title="Download as PNG"></i>
         </div>
@@ -78,12 +64,37 @@
     </div>
 
 
+    <div class="main-content">
     <div class="palette">
       <div class="gen-color" draggable="true" data-index="0"><b>Color 1</b></div>
       <div class="gen-color" draggable="true" data-index="1"><b>Color 2</b></div>
       <div class="gen-color" draggable="true" data-index="2"><b>Color 3</b></div>
       <div class="gen-color" draggable="true" data-index="3"><b>Color 4</b></div>
       <div class="gen-color" draggable="true" data-index="4"><b>Color 5</b></div>
+      </div>
+    </div>
+
+    <!-- Sidebar backdrop (should be after main-content, before sidebar) -->
+    <div id="sidebar-favorites-backdrop" class="sidebar-favorites-backdrop"></div>
+
+    <!-- Sidebar -->
+    <div id="sidebar-favorites" class="sidebar-favorites">
+      <div class="sidebar-favorites-header">
+        <div class="pill-toggle" id="pill-toggle">
+          <button class="pill-option active" id="pill-palettes" type="button">Palettes</button>
+          <button class="pill-option" id="pill-colors" type="button">Colors</button>
+          <div class="pill-slider" id="pill-slider"></div>
+        </div>
+        <button id="close-sidebar-favorites" class="close-sidebar-favorites-btn">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="sidebar-favorites-content">
+        <div class="sidebar-favorites-slider" id="sidebar-favorites-slider">
+          <div class="sidebar-favorites-panel" id="sidebar-favorites-palettes"></div>
+          <div class="sidebar-favorites-panel" id="sidebar-favorites-colors"></div>
+        </div>
+      </div>
     </div>
   </body>
 </html>
