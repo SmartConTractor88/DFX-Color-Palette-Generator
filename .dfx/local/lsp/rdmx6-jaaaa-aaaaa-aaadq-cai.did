@@ -75,6 +75,12 @@ type AuthnMethodRegistrationInfo = record {
   expiration : Timestamp;
   authn_method : opt AuthnMethodData;
 };
+type AuthnMethodRegistrationModeEnterError = variant {
+  InvalidRegistrationId : text;
+  AlreadyInProgress;
+  Unauthorized : principal;
+  InternalError : text;
+};
 type AuthnMethodReplaceError = variant {
   AuthnMethodNotFound;
   InvalidMetadata : text;
@@ -290,6 +296,7 @@ type KeyType = variant {
   unknown;
   browser_storage_key;
 };
+type LookupByRegistrationIdError = variant { InvalidRegistrationId : text };
 type MetadataMap = vec record {
   text;
   variant { map : MetadataMap; string : text; bytes : blob };
@@ -362,6 +369,7 @@ type RegistrationFlowNextStep = variant {
   CheckCaptcha : record { captcha_png_base64 : text };
   Finish;
 };
+type RegistrationId = text;
 type Salt = blob;
 type SessionKey = PublicKey;
 type SignedDelegation = record { signature : blob; delegation : Delegation };
@@ -422,8 +430,14 @@ service : {
         Err : AuthnMethodRegisterError;
       },
     );
-  authn_method_registration_mode_enter : (IdentityNumber) -> (
-      variant { Ok : record { expiration : Timestamp }; Err },
+  authn_method_registration_mode_enter : (
+      IdentityNumber,
+      opt RegistrationId,
+    ) -> (
+      variant {
+        Ok : record { expiration : Timestamp };
+        Err : AuthnMethodRegistrationModeEnterError;
+      },
     );
   authn_method_registration_mode_exit : (IdentityNumber) -> (
       variant { Ok; Err },
@@ -492,6 +506,9 @@ service : {
     );
   init_salt : () -> ();
   lookup : (UserNumber) -> (vec DeviceData) query;
+  lookup_by_registration_mode_id : (RegistrationId) -> (
+      opt IdentityNumber,
+    ) query;
   lookup_device_key : (blob) -> (opt DeviceKeyWithAnchor) query;
   openid_credential_add : (IdentityNumber, JWT, Salt) -> (
       variant { Ok; Err : OpenIdCredentialAddError },

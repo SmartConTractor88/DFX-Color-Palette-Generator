@@ -609,7 +609,7 @@ body {
 .hex-wrapper {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 6.6px; /* was 6px, now 10% more */
 }
 
 /* Add vertical spacing between elements in .gen-color */
@@ -626,8 +626,8 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 22px;
-  top: calc(50% + 22px);
+  margin-top: 24.2px; /* was 22px, now 10% more */
+  top: calc(50% + 24.2px); /* was 22px, now 10% more */
   display: block;
   text-align: center;
 }
@@ -635,8 +635,8 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 44px;
-  top: calc(50% + 44px);
+  margin-top: 48.4px; /* was 44px, now 10% more */
+  top: calc(50% + 48.4px); /* was 44px, now 10% more */
   display: block;
   text-align: center;
 }
@@ -645,8 +645,8 @@ body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  margin-top: 66px;
-  top: calc(50% + 66px);
+  margin-top: 96.8px; /* was 88px, now 10% more */
+  top: calc(50% + 96.8px); /* was 88px, now 10% more */
   display: block;
   text-align: center;
   font-size: 1.2rem;
@@ -726,7 +726,7 @@ body {
     flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    height: 12vh;
+    height: 10.5vh;
     padding: 10px;
   }
   
@@ -770,13 +770,7 @@ body {
     flex-direction: column;
     height: 12.5vh;
     padding: 10px 0;
-    gap: 10px;
-  }
-
-  .generate {
-    width: 90%;
-    height: 45px;
-    font-size: 1.2rem;
+    gap: 0px;
   }
 
   .toolbar-functions {
@@ -827,10 +821,10 @@ body {
 
   .palette {
     position: fixed;
-    top: 12vh;
+    top: 11vh;
     left: 0;
     right: 0;
-    bottom: 12.5vh;
+    bottom: 14vh;
     height: auto;
     width: 100vw;
     display: flex;
@@ -873,7 +867,7 @@ body {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 12vh;
+    height: 13vh;
     background-color: var(--bg-color);
     border-top: 1px solid var(--border-color);
     padding: 12px 0;
@@ -907,7 +901,7 @@ body {
 
   .generate {
     order: 2;
-    width: 90%;
+    width: 50%;
     height: 48px;
     font-size: 1.2rem;
     margin: 0 auto env(safe-area-inset-bottom, 12px);
@@ -999,14 +993,14 @@ body {
     height: 8vh;
   }
   .toolbar {
-    height: 12vh;
+    height: 13vh;
   }
   .palette {
     position: fixed;
     top: 8vh;
     left: 0;
     right: 0;
-    bottom: 12vh;
+    bottom: 13vh;
     height: auto;
     width: 100vw;
     display: flex;
@@ -1530,5 +1524,72 @@ body {
   .sidebar-fav-color-delete-btn,
   .sidebar-fav-color-copy-btn {
     padding: 2px;
+  }
+}
+
+.gen-color .lock-icon {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 72.6px; /* was 66px, now 10% more */
+  top: calc(50% + 72.6px); /* was 66px, now 10% more */
+  display: block;
+  text-align: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.gen-color .color-heart-icon {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 96.8px; /* was 88px, now 10% more */
+  top: calc(50% + 96.8px); /* was 88px, now 10% more */
+  display: block;
+  text-align: center;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+/* Show lock icon on hover (desktop) */
+@media (min-width: 481px) {
+  .gen-color .lock-icon {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .gen-color:hover .lock-icon {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .gen-color .lock-icon.fa-lock {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transition: opacity 0.2s;
+  }
+}
+
+/* Mobile: always show lock icon */
+@media (max-width: 768px) {
+  .gen-color .lock-icon {
+    position: static !important;
+    transform: none !important;
+    margin: 0 0 0 8px !important;
+    display: inline-block !important;
+    flex: 0 0 auto !important;
+    font-size: 1.4rem !important;
+    vertical-align: middle !important;
+    transition: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+  .hex-right .lock-icon {
+    margin-right: 8px !important;
   }
 }
