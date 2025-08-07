@@ -49,14 +49,32 @@
     </nav>
     
     <div class="toolbar">
-      <a class="generate" id="generate">Generate</a>
+
+      <div class="undo-redo-mobile-wrapper">
+        <div class="mobile-btn-wrapper side-left">
+          <i id="undo-button-mobile" class="fa-solid fa-arrow-left toolbar-function" title="Undo"></i>
+        </div>
+        <div class="mobile-btn-wrapper center">
+          <a class="generate" id="generate-mobile">Generate</a>
+        </div>
+        <div class="mobile-btn-wrapper side-right">
+          <i id="redo-button-mobile" class="fa-solid fa-arrow-right toolbar-function" title="Redo"></i>
+        </div>
+      </div>
+      
+
+      <a class="generate" id="generate-desktop">Generate</a>
 
       <!-- Right section of the toolbar -->
       <div class="toolbar-right">
         <!-- All toolbar icons in one container -->
         <div id="favorites-wrapper" class="toolbar-functions">
+          <i id="undo-button-desktop" class="fa-solid fa-arrow-left toolbar-function" title="Undo"></i>
+          <i id="redo-button-desktop" class="fa-solid fa-arrow-right toolbar-function" title="Redo"></i>
+
           <i id="like-button" class="far fa-heart toolbar-function disabled" title="Save to Favorites"></i>
           <i id="list-button" class="fas fa-list-ul toolbar-function disabled" title="Show List"></i>
+
           <i id="copy-all" class="fas fa-copy toolbar-function" title="Copy All"></i>
           <i id="download-png" class="fas fa-download toolbar-function" title="Download as PNG"></i>
         </div>
@@ -65,12 +83,12 @@
 
 
     <div class="main-content">
-    <div class="palette">
-      <div class="gen-color" draggable="true" data-index="0"><b>Color 1</b></div>
-      <div class="gen-color" draggable="true" data-index="1"><b>Color 2</b></div>
-      <div class="gen-color" draggable="true" data-index="2"><b>Color 3</b></div>
-      <div class="gen-color" draggable="true" data-index="3"><b>Color 4</b></div>
-      <div class="gen-color" draggable="true" data-index="4"><b>Color 5</b></div>
+      <div class="palette">
+        <div class="gen-color" draggable="true" data-index="0"><b>Color 1</b></div>
+        <div class="gen-color" draggable="true" data-index="1"><b>Color 2</b></div>
+        <div class="gen-color" draggable="true" data-index="2"><b>Color 3</b></div>
+        <div class="gen-color" draggable="true" data-index="3"><b>Color 4</b></div>
+        <div class="gen-color" draggable="true" data-index="4"><b>Color 5</b></div>
       </div>
     </div>
 
