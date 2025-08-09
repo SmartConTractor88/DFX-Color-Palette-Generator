@@ -231,6 +231,50 @@ function enforceGenColorLayout() {
       div.style.setProperty('justify-content', 'center', 'important');
     }
   });
+  
+  // Ensure icons have correct initial opacity state
+  enforceIconVisibility();
+}
+
+function enforceIconVisibility() {
+  const colorDivs = document.querySelectorAll('.gen-color');
+  colorDivs.forEach(div => {
+    const copyIcon = div.querySelector('.copy-icon');
+    const dragIcon = div.querySelector('.fa-left-right');
+    const lockIcon = div.querySelector('.lock-icon');
+    const heartIcon = div.querySelector('.color-heart-icon');
+    
+    if (window.innerWidth <= 768) {
+      // Mobile: always show icons
+      [copyIcon, dragIcon, lockIcon, heartIcon].forEach(icon => {
+        if (icon) {
+          icon.style.opacity = '1';
+          icon.style.pointerEvents = 'auto';
+        }
+      });
+    } else {
+      // Desktop: let CSS handle the opacity for hover effects
+      [copyIcon, dragIcon, heartIcon].forEach(icon => {
+        if (icon) {
+          // Remove any inline styles to let CSS take over
+          icon.style.removeProperty('opacity');
+          icon.style.removeProperty('pointer-events');
+        }
+      });
+      
+      // Handle lock icon specially - show if locked
+      if (lockIcon) {
+        if (lockIcon.classList.contains('fa-lock')) {
+          lockIcon.style.opacity = '1';
+          lockIcon.style.pointerEvents = 'auto';
+        } else {
+          // Remove inline styles to let CSS handle hover
+          lockIcon.style.removeProperty('opacity');
+          lockIcon.style.removeProperty('pointer-events');
+        }
+      }
+    }
+  });
 }
 
 function handleDrag(e) {
@@ -347,8 +391,11 @@ function endDrag(e) {
     const prev = JSON.parse(JSON.stringify(paletteState));
     reorderDOM();
     recordPaletteChange(prev);
+    // Re-check favorite palette status after reorder (order-insensitive)
+    try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   } else {
     console.log("Drag ended, no index change.");
+    try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   }
 
   cleanupDrag();
@@ -410,6 +457,7 @@ function reorderDOM() {
   setTimeout(() => {
     initDragAndDrop();
   }, 10);
+  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
 }
 
 
@@ -470,6 +518,8 @@ function cleanupDrag() {
 
   // Ensure layout is correct after cleanup
   enforceGenColorLayout();
+  // After any drag ends (reorder or not), recompute toolbar favorite state ignoring order
+  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   
   dragState = {
     isDragging: false,
@@ -531,7 +581,11 @@ function generateRandomHexColor() {
 }
 
 function generatePalette() {
-  syncPaletteStateToDOMOrder();
+  // Only sync if paletteState doesn't exist or is invalid
+  if (!paletteState || paletteState.length !== 5) {
+    syncPaletteStateToDOMOrder();
+  }
+  
   try {
     const colorDivs = document.querySelectorAll('.gen-color');
     colorDivs.forEach(div => div.classList.add('loading'));
@@ -541,6 +595,8 @@ function generatePalette() {
     if (!paletteState || paletteState.length !== 5) {
       paletteState = Array.from({ length: 5 }, () => ({ color: generateRandomHexColor(), isLocked: false }));
     }
+
+
 
     // 2. Only update the color of unlocked entries in paletteState
     paletteState.forEach((entry, i) => {
@@ -691,7 +747,8 @@ function generatePalette() {
         heartIcon.style.display = 'none';
         heartIcon.classList.add('hidden');
       }
-      let isLocked = div.dataset.locked === 'true';
+      // Read lock status from paletteState instead of DOM dataset
+      let isLocked = entry.isLocked;
       if (isLocked) {
         lockIcon.classList.remove('fa-lock-open');
         lockIcon.classList.add('fa-lock');
@@ -701,8 +758,7 @@ function generatePalette() {
         e.preventDefault();
         e.stopPropagation();
         isLocked = !isLocked;
-        div.dataset.locked = isLocked;
-        // --- FIX: persist lock state and color in paletteState ---
+        // Update paletteState directly instead of DOM dataset
         if (Array.isArray(paletteState) && paletteState[i]) {
           paletteState[i].isLocked = isLocked;
           if (isLocked) {
@@ -809,6 +865,12 @@ function switchToInput(hexText, div, i) {
     const liveTextColor = chroma('#' + padded).luminance() > 0.5 ? '#000' : '#fff';
     input.style.color = liveTextColor;
     div.querySelectorAll('i').forEach(icon => icon.style.color = liveTextColor);
+    // Keep heart icons in sync with favorite colors during live edits
+    if (typeof updateHeartIconsForColors === 'function') {
+      try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
+    }
+    // Also sync toolbar favorite palette heart (order-insensitive)
+    try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   });
 
   input.addEventListener('paste', (e) => {
@@ -837,6 +899,11 @@ function switchToInput(hexText, div, i) {
     }
     recordPaletteChange(prev); // Record the change
     input.replaceWith(hexText); // Then replace the input with the hex text
+    // After committing the edit, ensure heart icons reflect favorite status
+    if (typeof updateHeartIconsForColors === 'function') {
+      try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
+    }
+    try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   }
 }
 
@@ -871,6 +938,11 @@ function updateColorFromInput(input) {
     recordPaletteChange(prev);
     paletteState[index].color = hex;
     updatePaletteDOM();
+    // Ensure heart icons reflect favorites after input update
+    if (typeof updateHeartIconsForColors === 'function') {
+      try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
+    }
+    try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   }
 }
 
@@ -904,6 +976,7 @@ document.addEventListener("DOMContentLoaded", () => {
       recordPaletteChange(prev);
       setTimeout(() => {
         fetchFavoritesFromBackend();
+        try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
       }, 100);
     });      
   });
@@ -1016,10 +1089,22 @@ function updatePaletteDOM() {
       heartIcon.classList.add('hidden');
     }
 
-    heartIcon.addEventListener('click', async (e) => {
+  heartIcon.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const currentHexCode = color.replace(/^#/, '').toUpperCase();
+    // Compute current hex dynamically from DOM to avoid stale closures
+    let currentHexCode = null;
+    const inputEl = div.querySelector('.hex-input');
+    const spanEl = div.querySelector('.hex-code');
+    if (inputEl && document.activeElement === inputEl) {
+      currentHexCode = inputEl.value.toUpperCase();
+    } else if (spanEl) {
+      currentHexCode = spanEl.innerText.toUpperCase();
+    } else {
+      // Fallback to latest state or initial color
+      const fallback = (paletteState?.[i]?.color || color) || '';
+      currentHexCode = fallback.replace(/^#/, '').toUpperCase();
+    }
 
       if (!userIsLoggedIn) {
         alert('Please log in to save favorite colors.');
@@ -1067,6 +1152,12 @@ function updatePaletteDOM() {
   enforceGenColorLayout?.();
   initDragAndDrop?.();
   bindInputEvents();
+  enforceIconVisibility();
+  // After rebuilding the DOM, sync heart icons with favorite colors
+  if (typeof updateHeartIconsForColors === 'function') {
+    try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
+  }
+  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
 }
 
 function recordPaletteChange(prevPaletteState) {
@@ -1074,6 +1165,8 @@ function recordPaletteChange(prevPaletteState) {
     color: entry.color.toUpperCase(),
     isLocked: !!entry.isLocked
   }));
+
+
 
   const lastSnapshot = undoStack[undoStack.length - 1];
   const lastSerialized = lastSnapshot?.map(e => e.color + (e.isLocked ? '1' : '0')).join(',');
@@ -1094,6 +1187,7 @@ function handleUndo() {
   if (undoStack.length === 0) return;
   redoStack.push(JSON.parse(JSON.stringify(paletteState)));
   paletteState = JSON.parse(JSON.stringify(undoStack.pop()));
+
   updatePaletteDOM();
   updateUndoRedoButtons();
 }
@@ -1106,6 +1200,7 @@ function handleRedo() {
   
   undoStack.push(prev); // Manually add current state to undo stack
   paletteState = next; // Apply next state
+
 
   updatePaletteDOM();
   updateUndoRedoButtons();
@@ -1710,33 +1805,45 @@ async function addCurrentPaletteToFavorites() {
 
 async function fetchFavoritesFromBackend() {
   try {
-    const current = getCurrentPaletteHexes();
-    
-    isCurrentPaletteFavorite = palettes.some(p => palettesMatch(p.colors, current));
-    toggleLikeButton(isCurrentPaletteFavorite);
-
     const palettes = await backend.get_palettes();
+    // Cache favorites for local checks
+    sidebarFavoritePalettes = Array.isArray(palettes) ? palettes : [];
     updateFavoritesDropdown(palettes);
 
-    const colorDivs = document.querySelectorAll(".gen-color");
-    // Only proceed if colorDivs exist
-    if (colorDivs && colorDivs.length > 0) {
-      const current = Array.from(colorDivs, div => {
-        const hexSpan = div.querySelector(".hex-code");
-        return hexSpan ? ("#" + hexSpan.innerText.toUpperCase()) : null;
-      }).filter(Boolean);
-      const found = palettes.some(p => palettesMatch(p.colors, current));
-      toggleLikeButton(found);
-    }
+    const current = getCurrentPaletteHexes();
+    const found = palettes.some(p => palettesMatchUnordered(p.colors, current));
+    isCurrentPaletteFavorite = found;
+    toggleLikeButton(found);
   } catch (err) {
     console.error("Error fetching favorites:", err);
   }
+}
+
+// Local-only toolbar heart state based on cached palettes (order-insensitive)
+function updateToolbarFavoritePaletteIconLocal() {
+  const current = getCurrentPaletteHexes();
+  const list = Array.isArray(sidebarFavoritePalettes) ? sidebarFavoritePalettes : [];
+  const found = list.some(p => palettesMatchUnordered(p.colors, current));
+  toggleLikeButton(found);
 }
 
 function palettesMatch(p1, p2) {
   if (!Array.isArray(p1) || !Array.isArray(p2)) return false;
   if (p1.length !== p2.length) return false;
   return p1.every((val, index) => val.toUpperCase() === p2[index].toUpperCase());
+}
+
+// Order-insensitive comparison of two palettes (treat as multisets)
+function palettesMatchUnordered(p1, p2) {
+  if (!Array.isArray(p1) || !Array.isArray(p2)) return false;
+  if (p1.length !== p2.length) return false;
+  const norm = (arr) => arr.map(v => (v || '').replace(/^#/, '').toUpperCase()).sort();
+  const a = norm(p1);
+  const b = norm(p2);
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
 }
 
 function updateFavoritesDropdown(palettes = []) {
@@ -1984,7 +2091,8 @@ function updateFavoritesDropdown(palettes = []) {
         });
 
         // Lock state for this color block (must be after heartIcon is created)
-        let isLocked = div.dataset.locked === 'true';
+        // Read lock status from paletteState instead of DOM dataset
+        let isLocked = Array.isArray(paletteState) && paletteState[i] ? paletteState[i].isLocked : false;
         if (isLocked) {
           lockIcon.classList.remove('fa-lock-open');
           lockIcon.classList.add('fa-lock');
@@ -1994,8 +2102,7 @@ function updateFavoritesDropdown(palettes = []) {
           e.preventDefault();
           e.stopPropagation();
           isLocked = !isLocked;
-          div.dataset.locked = isLocked;
-          // --- FIX: persist lock state and color in paletteState ---
+          // Update paletteState directly instead of DOM dataset
           if (Array.isArray(paletteState) && paletteState[i]) {
             paletteState[i].isLocked = isLocked;
             if (isLocked) {
@@ -2148,7 +2255,18 @@ likeButton.addEventListener("click", async () => {
     likeButton.classList.remove("fas");
     likeButton.classList.add("far");
     try {
-      await backend.delete_palette(paletteColors);
+      // Find the matching saved palette (order-insensitive) and delete using its stored order
+      let matched = null;
+      const list = Array.isArray(sidebarFavoritePalettes) ? sidebarFavoritePalettes : [];
+      matched = list.find(p => palettesMatchUnordered(p.colors, paletteColors));
+      if (!matched) {
+        // Fallback: fetch latest and try again
+        const latest = await backend.get_palettes();
+        sidebarFavoritePalettes = Array.isArray(latest) ? latest : [];
+        matched = sidebarFavoritePalettes.find(p => palettesMatchUnordered(p.colors, paletteColors));
+      }
+      const colorsToDelete = matched?.colors || paletteColors;
+      await backend.delete_palette(colorsToDelete);
       isCurrentPaletteFavorite = false;
       toggleLikeButton(false);
       fetchFavoritesFromBackend();
@@ -2205,6 +2323,8 @@ const tooltip = document.getElementById("principalTooltip");
 
 let authClient;
 let userIsLoggedIn = false;
+// Global username to represent the signed-in user across providers
+let username = null;
 
 profileDisplay.addEventListener("click", () => {
   const isOpen = dropdownMenu.classList.toggle("show");
@@ -2255,11 +2375,14 @@ async function initAuth() {
     updateIdentityDisplay(principal);
   } else {
     userIsLoggedIn = false;
+    username = null;
     profileName.textContent = "Sign In";
     fullPrincipalSpan.textContent = "";
     tooltip.style.display = "none";
     logoutButton.classList.add("disabled");
     updateFavoritesUI(false);
+    // Remove username section from dropdown if present
+    removeUserMenuIdentitySection();
   }
 }
 
@@ -2300,9 +2423,10 @@ if (logoutButton) {
 
 function updateIdentityDisplay(principal) {
   userIsLoggedIn = true;
-  profileName.textContent = principal.slice(0, 12) + "...";
-  profileName.dataset.fullPrincipal = principal;
-  fullPrincipalSpan.textContent = principal;
+  username = principal;
+  profileName.textContent = username.slice(0, 12) + "...";
+  profileName.dataset.fullPrincipal = username;
+  fullPrincipalSpan.textContent = username;
   tooltip.style.display = "";
   logoutButton.classList.remove("disabled");
   updateFavoritesUI(true);
@@ -2315,6 +2439,111 @@ function updateIdentityDisplay(principal) {
   }
   // Also set up editable hex code UI immediately
   generatePalette();
+  // Ensure username line is visible inside the user menu
+  addOrUpdateUserMenuIdentitySection();
+}
+
+// Inject or update "Signed in as" section inside the dropdown menu
+function addOrUpdateUserMenuIdentitySection() {
+  if (!dropdownMenu || !userIsLoggedIn || !username) return;
+
+  // Header: "Signed in as:"
+  let signedInHeader = dropdownMenu.querySelector('#dropdownSignedInHeader');
+  if (!signedInHeader) {
+    signedInHeader = document.createElement('div');
+    signedInHeader.id = 'dropdownSignedInHeader';
+    signedInHeader.className = 'dropdown-header';
+    signedInHeader.textContent = 'Signed in as:';
+    // Prepend to the very top of the menu
+    dropdownMenu.insertBefore(signedInHeader, dropdownMenu.firstElementChild);
+  }
+
+  // Row with the full username/principal and a copy icon
+  let userRow = dropdownMenu.querySelector('#dropdownSignedInUser');
+  if (!userRow) {
+    userRow = document.createElement('div');
+    userRow.id = 'dropdownSignedInUser';
+    userRow.className = 'dropdown-option';
+    userRow.style.display = 'flex';
+    userRow.style.alignItems = 'center';
+    userRow.style.justifyContent = 'space-between';
+
+    // Leading user icon (dark), same as the button
+    const userIcon = document.createElement('i');
+    userIcon.id = 'dropdownUserIcon';
+    userIcon.className = 'fa-solid fa-user';
+    userIcon.style.color = '#444';
+    userIcon.style.marginRight = '8px';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.id = 'dropdownSignedInUsername';
+    // Keep the username on a single line with ellipsis
+    nameSpan.style.whiteSpace = 'nowrap';
+    nameSpan.style.overflow = 'hidden';
+    nameSpan.style.textOverflow = 'ellipsis';
+    nameSpan.style.flex = '1 1 auto';
+    nameSpan.style.marginRight = '8px';
+
+    const copyIcon = document.createElement('i');
+    copyIcon.className = 'fas fa-copy copy-icon';
+    copyIcon.title = 'Copy Principal';
+    copyIcon.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(username).then(() => {
+        copyIcon.classList.replace('fa-copy', 'fa-check');
+        setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
+      });
+    });
+
+    userRow.appendChild(userIcon);
+    userRow.appendChild(nameSpan);
+    userRow.appendChild(copyIcon);
+    // Ensure it sits directly under the header at the top
+    if (signedInHeader.nextSibling) {
+      dropdownMenu.insertBefore(userRow, signedInHeader.nextSibling);
+    } else {
+      dropdownMenu.appendChild(userRow);
+    }
+  }
+
+  // If elements already existed but were not at the top, move them
+  if (dropdownMenu.firstElementChild !== signedInHeader) {
+    dropdownMenu.insertBefore(signedInHeader, dropdownMenu.firstElementChild);
+  }
+  if (signedInHeader.nextSibling !== userRow) {
+    dropdownMenu.insertBefore(userRow, signedInHeader.nextSibling);
+  }
+
+  // Ensure user icon exists in case the row pre-existed without it
+  let userIcon = userRow.querySelector('#dropdownUserIcon');
+  if (!userIcon) {
+    userIcon = document.createElement('i');
+    userIcon.id = 'dropdownUserIcon';
+    userIcon.className = 'fa-solid fa-user';
+    userIcon.style.color = '#444';
+    userIcon.style.marginRight = '8px';
+    const nameSpanExisting = userRow.querySelector('#dropdownSignedInUsername');
+    if (nameSpanExisting) {
+      userRow.insertBefore(userIcon, nameSpanExisting);
+    } else {
+      userRow.prepend(userIcon);
+    }
+  }
+
+  const nameSpan = dropdownMenu.querySelector('#dropdownSignedInUsername');
+  if (nameSpan) {
+    const shortName = username && username.length > 12 ? (username.slice(0, 12) + '...') : username;
+    nameSpan.textContent = shortName;
+    nameSpan.title = username;
+  }
+}
+
+function removeUserMenuIdentitySection() {
+  if (!dropdownMenu) return;
+  const header = dropdownMenu.querySelector('#dropdownSignedInHeader');
+  const row = dropdownMenu.querySelector('#dropdownSignedInUser');
+  if (header) header.remove();
+  if (row) row.remove();
 }
 
 // ================================
@@ -2417,6 +2646,7 @@ async function initialPaletteLoad() {
   }
   // Rebuild .gen-color DOM to attach hex code editing listeners after initial load
   rebuildGenColorDOMForLayout();
+  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
 }
 
 if (document.readyState === 'loading') {
@@ -2714,20 +2944,32 @@ function rebuildGenColorDOMForLayout() {
         alert('Please log in to save favorite colors.');
         return;
       }
+      // Determine current hex from DOM at click time to avoid stale values
+      let dynamicHex = null;
+      const activeInput = div.querySelector('.hex-input');
+      const spanCode = div.querySelector('.hex-code');
+      if (activeInput && document.activeElement === activeInput) {
+        dynamicHex = activeInput.value.toUpperCase();
+      } else if (spanCode) {
+        dynamicHex = spanCode.innerText.toUpperCase();
+      } else {
+        const fallback = (paletteState?.[i]?.color || color) || '';
+        dynamicHex = fallback.replace(/^#/, '').toUpperCase();
+      }
       const isLiked = heartIcon.classList.contains('fas');
       try {
         if (isLiked) {
-          await backend.delete_color(currentHexCode);
-          sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== currentHexCode);
+          await backend.delete_color(dynamicHex);
+          sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== dynamicHex);
           heartIcon.classList.remove('fas');
           heartIcon.classList.add('far');
-          updateAllHeartIconsForColor(currentHexCode, false);
+          updateAllHeartIconsForColor(dynamicHex, false);
         } else {
-          await backend.add_color(currentHexCode);
-          sidebarFavoriteColors.push({ hex_code: currentHexCode });
+          await backend.add_color(dynamicHex);
+          sidebarFavoriteColors.push({ hex_code: dynamicHex });
           heartIcon.classList.remove('far');
           heartIcon.classList.add('fas');
-          updateAllHeartIconsForColor(currentHexCode, true);
+          updateAllHeartIconsForColor(dynamicHex, true);
         }
       } catch (err) {
         alert('Failed to update favorite: ' + err.message);
@@ -2749,9 +2991,12 @@ function rebuildGenColorDOMForLayout() {
     right.style.gap = '12px';
     right.style.flex = '0 0 auto';
     [copyIcon, dragIcon, lockIcon, heartIcon].forEach(icon => {
-      icon.style.opacity = '1';
-      icon.style.pointerEvents = 'auto';
-      right.appendChild(icon);
+      if (icon) {
+        // This function is only called for mobile layout, so always show icons
+        icon.style.opacity = '1';
+        icon.style.pointerEvents = 'auto';
+        right.appendChild(icon);
+      }
     });
 
     div.appendChild(left);

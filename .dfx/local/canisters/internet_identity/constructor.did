@@ -75,6 +75,7 @@ type AuthnMethodRegisterError = variant {
 };
 type AuthnMethodRegistrationInfo = record {
   expiration : Timestamp;
+  session : opt principal;
   authn_method : opt AuthnMethodData;
 };
 type AuthnMethodRegistrationModeEnterError = variant {
@@ -82,6 +83,12 @@ type AuthnMethodRegistrationModeEnterError = variant {
   InternalCanisterError : text;
   AlreadyInProgress;
   Unauthorized : principal;
+};
+type AuthnMethodRegistrationModeExitError = variant {
+  InternalCanisterError : text;
+  RegistrationModeOff;
+  Unauthorized : principal;
+  InvalidMetadata : text;
 };
 type AuthnMethodReplaceError = variant {
   AuthnMethodNotFound;
@@ -92,6 +99,7 @@ type AuthnMethodSecuritySettings = record {
   purpose : AuthnMethodPurpose;
 };
 type AuthnMethodSecuritySettingsReplaceError = variant { AuthnMethodNotFound };
+type AuthnMethodSessionInfo = record { name : opt text };
 type BufferedArchiveEntry = record {
   sequence_number : nat64;
   entry : blob;
@@ -155,6 +163,7 @@ type DeviceProtection = variant { unprotected; protected };
 type DeviceRegistrationInfo = record {
   tentative_device : opt DeviceData;
   expiration : Timestamp;
+  tentative_session : opt principal;
 };
 type DeviceWithUsage = record {
   alias : text;
@@ -442,9 +451,10 @@ service : (opt InternetIdentityInit) -> {
         Err : AuthnMethodRegistrationModeEnterError;
       },
     );
-  authn_method_registration_mode_exit : (IdentityNumber) -> (
-      variant { Ok; Err },
-    );
+  authn_method_registration_mode_exit : (
+      IdentityNumber,
+      opt AuthnMethodData,
+    ) -> (variant { Ok; Err : AuthnMethodRegistrationModeExitError });
   authn_method_remove : (IdentityNumber, PublicKey) -> (variant { Ok; Err });
   authn_method_replace : (IdentityNumber, PublicKey, AuthnMethodData) -> (
       variant { Ok; Err : AuthnMethodReplaceError },
@@ -454,6 +464,15 @@ service : (opt InternetIdentityInit) -> {
       PublicKey,
       AuthnMethodSecuritySettings,
     ) -> (variant { Ok; Err : AuthnMethodSecuritySettingsReplaceError });
+  authn_method_session_info : (IdentityNumber) -> (
+      opt AuthnMethodSessionInfo,
+    ) query;
+  authn_method_session_register : (IdentityNumber) -> (
+      variant {
+        Ok : AuthnMethodConfirmationCode;
+        Err : AuthnMethodRegisterError;
+      },
+    );
   check_captcha : (CheckCaptchaArg) -> (
       variant { Ok : IdRegNextStepResult; Err : CheckCaptchaError },
     );
