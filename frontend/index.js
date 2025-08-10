@@ -852,6 +852,10 @@ function switchToInput(hexText, div, i) {
   input.inputMode = 'text';
   input.pattern = '[0-9A-Fa-f]{0,6}';
   input.title = 'Edit color (hex)';
+  // Mobile-specific attributes for better input experience
+  input.setAttribute('autocorrect', 'off');
+  input.setAttribute('autocapitalize', 'off');
+  input.setAttribute('spellcheck', 'false');
   hexText.replaceWith(input);
   input.focus();
   input.select();
@@ -899,6 +903,22 @@ function switchToInput(hexText, div, i) {
     }
     recordPaletteChange(prev); // Record the change
     input.replaceWith(hexText); // Then replace the input with the hex text
+    
+    // Re-attach event listeners to the hex text element
+    hexText.tabIndex = 0;
+    hexText.addEventListener('click', () => switchToInput(hexText, div, i));
+    hexText.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      switchToInput(hexText, div, i);
+    });
+    hexText.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        switchToInput(hexText, div, i);
+      }
+    });
+    
     // After committing the edit, ensure heart icons reflect favorite status
     if (typeof updateHeartIconsForColors === 'function') {
       try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
@@ -2886,6 +2906,19 @@ function rebuildGenColorDOMForLayout() {
     hexText.className = 'hex-code';
     hexText.innerText = hex;
     hexText.style.color = textColor;
+    hexText.tabIndex = 0;
+    hexText.addEventListener('click', () => switchToInput(hexText, div, i));
+    hexText.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      switchToInput(hexText, div, i);
+    });
+    hexText.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        switchToInput(hexText, div, i);
+      }
+    });
 
     // Create icons
     const copyIcon = document.createElement('i');

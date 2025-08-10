@@ -664,6 +664,10 @@ body {
   display: block;
   box-sizing: border-box;
   transition: box-shadow 0.2s, border 0.2s;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0;
 }
 .hex-input:focus {
   border: 1.5px solid #aaa;
@@ -902,6 +906,10 @@ body {
     text-align: left;
     margin-left: 8px;
     background: transparent !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0;
   }
 
   /* Mobile Bottom Toolbar */
@@ -977,6 +985,10 @@ body {
     margin-left: 8px;
     background: transparent !important;
     max-width: 100px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0;
   }
   .gen-color .copy-icon,
   .gen-color .fa-left-right,
@@ -1139,6 +1151,9 @@ body {
     position: static !important;
     transform: none !important;
     flex: 1 1 auto !important;
+    cursor: pointer !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
+    touch-action: manipulation !important;
   }
   .hex-right i {
     margin: 0 0 0 8px !important;
