@@ -864,10 +864,10 @@ body {
 
   .palette {
     position: fixed;
-    top: 11vh;
+    top: 12vh;
     left: 0;
     right: 0;
-    bottom: 14vh;
+    bottom: 15vh;
     height: auto;
     width: 100vw;
     display: flex;
@@ -1009,17 +1009,17 @@ body {
 /* Mobile */
 @media (max-width: 480px) {
   .navbar {
-    height: 8vh;
+    height: 9.5vh;
   }
   .toolbar {
-    height: 13vh;
+    height: 13.5vh;
   }
   .palette {
     position: fixed;
-    top: 8vh;
+    top: 12vh;
     left: 0;
     right: 0;
-    bottom: 13vh;
+    bottom: 15vh;
     height: auto;
     width: 100vw;
     display: flex;
