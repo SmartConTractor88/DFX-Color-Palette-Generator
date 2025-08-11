@@ -457,7 +457,7 @@ function reorderDOM() {
   setTimeout(() => {
     initDragAndDrop();
   }, 10);
-  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
+  try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
 }
 
 
@@ -519,7 +519,7 @@ function cleanupDrag() {
   // Ensure layout is correct after cleanup
   enforceGenColorLayout();
   // After any drag ends (reorder or not), recompute toolbar favorite state ignoring order
-  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
+  try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
   
   dragState = {
     isDragging: false,
@@ -923,7 +923,7 @@ function switchToInput(hexText, div, i) {
     if (typeof updateHeartIconsForColors === 'function') {
       try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
     }
-    try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
+    try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
   }
 }
 
@@ -996,7 +996,7 @@ document.addEventListener("DOMContentLoaded", () => {
       recordPaletteChange(prev);
       setTimeout(() => {
         fetchFavoritesFromBackend();
-        try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
+        try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
       }, 100);
     });      
   });
@@ -1177,7 +1177,7 @@ function updatePaletteDOM() {
   if (typeof updateHeartIconsForColors === 'function') {
     try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
   }
-  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
+  try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
 }
 
 function recordPaletteChange(prevPaletteState) {
@@ -1210,6 +1210,9 @@ function handleUndo() {
 
   updatePaletteDOM();
   updateUndoRedoButtons();
+  
+  // Ensure toolbar heart icon is updated after undo operation
+  forceUpdateToolbarHeartIcon();
 }
 
 function handleRedo() {
@@ -1224,6 +1227,9 @@ function handleRedo() {
 
   updatePaletteDOM();
   updateUndoRedoButtons();
+  
+  // Ensure toolbar heart icon is updated after redo operation
+  forceUpdateToolbarHeartIcon();
 }
 
 // Undo/Redo event listeners
@@ -1438,6 +1444,11 @@ function renderSidebarFavoritePalettes() {
       loadPaletteToMain(palette);
       updatePaletteDOM();
       closeSidebarFavorites();
+      
+      // Ensure toolbar heart icon is updated after loading palette
+      setTimeout(() => {
+        forceUpdateToolbarHeartIcon();
+      }, 200);
     });
   });
 
@@ -1469,7 +1480,7 @@ function renderSidebarFavoritePalettes() {
 }
 
 
-// Function to load a palette to the main area
+  // Function to load a palette to the main area
   function loadPaletteToMain(palette) {
   // First update the global state
   paletteState = palette.colors.map(hex => ({
@@ -1479,6 +1490,9 @@ function renderSidebarFavoritePalettes() {
 
   // Then record the change
   updatePaletteDOM();
+  
+  // Force update toolbar heart icon after loading palette
+  forceUpdateToolbarHeartIcon();
 
   // Now apply the colors to the DOM
   const colorDivs = document.querySelectorAll(".gen-color");
@@ -1780,6 +1794,9 @@ function closeSidebarFavorites() {
   sidebar.classList.remove('open');
   body.classList.remove('sidebar-favorites-open');
   sidebarBackdrop.classList.remove('active');
+  
+  // Update toolbar heart icon after closing sidebar
+  forceUpdateToolbarHeartIcon();
 }
 
 // Close sidebar when clicking the close button
@@ -1845,6 +1862,33 @@ function updateToolbarFavoritePaletteIconLocal() {
   const list = Array.isArray(sidebarFavoritePalettes) ? sidebarFavoritePalettes : [];
   const found = list.some(p => palettesMatchUnordered(p.colors, current));
   toggleLikeButton(found);
+}
+
+// Enhanced version that ensures favorites are loaded before checking
+async function updateToolbarFavoritePaletteIconLocalWithFallback() {
+  // First try with cached data
+  updateToolbarFavoritePaletteIconLocal();
+  
+  // If no favorites are cached, try to fetch them
+  if (!sidebarFavoritePalettes || sidebarFavoritePalettes.length === 0) {
+    try {
+      await fetchFavoritesFromBackend();
+      // After fetching, check again
+      updateToolbarFavoritePaletteIconLocal();
+    } catch (err) {
+      console.log("Could not fetch favorites for toolbar update:", err);
+    }
+  }
+}
+
+// Force update toolbar heart icon - useful for mobile when loading palettes
+function forceUpdateToolbarHeartIcon() {
+  if (userIsLoggedIn) {
+    // Small delay to ensure DOM is updated
+    setTimeout(() => {
+      updateToolbarFavoritePaletteIconLocalWithFallback();
+    }, 100);
+  }
 }
 
 function palettesMatch(p1, p2) {
@@ -2162,28 +2206,23 @@ function updateFavoritesDropdown(palettes = []) {
             lockIcon.title = 'Lock color';
           }
         });
-
-        // Append icons in correct order
         if (window.innerWidth <= 768) {
-          // On mobile/tablet, use two containers for left/right alignment
-          const left = document.createElement("div");
-          left.className = "hex-left";
-          left.style.display = "flex";
-          left.style.alignItems = "center";
-          left.style.flex = "1 1 auto";
+          const left = document.createElement('div');
+          left.className = 'hex-left';
+          left.style.display = 'flex';
+          left.style.alignItems = 'center';
+          left.style.flex = '1 1 auto';
           left.appendChild(hexText);
-
-          const right = document.createElement("div");
-          right.className = "hex-right";
-          right.style.display = "flex";
-          right.style.alignItems = "center";
-          right.style.gap = "12px";
-          right.style.flex = "0 0 auto";
+          const right = document.createElement('div');
+          right.className = 'hex-right';
+          right.style.display = 'flex';
+          right.style.alignItems = 'center';
+          right.style.gap = '12px';
+          right.style.flex = '0 0 auto';
           right.appendChild(copyIcon);
           right.appendChild(dragIcon);
           right.appendChild(lockIcon);
           right.appendChild(heartIcon);
-
           div.appendChild(left);
           div.appendChild(right);
         } else {
@@ -2192,9 +2231,9 @@ function updateFavoritesDropdown(palettes = []) {
           wrapper.appendChild(dragIcon);
           wrapper.appendChild(lockIcon);
           wrapper.appendChild(heartIcon);
-          wrapper.style.flexDirection = "column";
-          wrapper.style.alignItems = "center";
-          wrapper.style.justifyContent = "center";
+          wrapper.style.flexDirection = 'column';
+          wrapper.style.alignItems = 'center';
+          wrapper.style.justifyContent = 'center';
           div.appendChild(wrapper);
         }
         div.style.display = "flex";
@@ -2209,6 +2248,9 @@ function updateFavoritesDropdown(palettes = []) {
       if (backdrop) backdrop.classList.remove("active");
       toggle.classList.remove("rotated");
       toggleLikeButton(true);
+      
+      // Force update toolbar heart icon after loading palette
+      forceUpdateToolbarHeartIcon();
       
       initDragAndDrop();
     };
@@ -2459,6 +2501,11 @@ function updateIdentityDisplay(principal) {
   }
   // Also set up editable hex code UI immediately
   generatePalette();
+  
+  // Ensure toolbar heart icon is updated after login
+  setTimeout(() => {
+    forceUpdateToolbarHeartIcon();
+  }, 500);
   // Ensure username line is visible inside the user menu
   addOrUpdateUserMenuIdentitySection();
 }
@@ -2666,7 +2713,7 @@ async function initialPaletteLoad() {
   }
   // Rebuild .gen-color DOM to attach hex code editing listeners after initial load
   rebuildGenColorDOMForLayout();
-  try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
+  try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
 }
 
 if (document.readyState === 'loading') {
@@ -3039,6 +3086,12 @@ function rebuildGenColorDOMForLayout() {
   enforceGenColorLayout();
   initDragAndDrop();
   bindInputEvents();
+  
+  // After rebuilding the DOM, sync heart icons with favorite colors
+  if (typeof updateHeartIconsForColors === 'function') {
+    try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
+  }
+  try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
 }
 
 // Listen for window resize and update layout if mode changes
@@ -3047,5 +3100,7 @@ window.addEventListener('resize', () => {
   if (vertical !== currentLayoutVertical) {
     currentLayoutVertical = vertical;
     rebuildGenColorDOMForLayout();
+    // Update toolbar heart icon when switching between mobile/desktop
+    forceUpdateToolbarHeartIcon();
   }
 });
