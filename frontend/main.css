@@ -240,7 +240,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-right: 20px;
+  padding: 0 20px;
   height: 8vh;
   background-color: var(--bg-color);
   border: 1px solid var(--border-color);
@@ -268,29 +268,28 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0.25rem 0.5rem;
-  border: 4px solid transparent;
-  background:
-    linear-gradient(white, white) padding-box,
-    linear-gradient(to bottom, #44cafb, #44fbc7) border-box;
+  border: 4px solid var(--border-color);
+  border-radius: 16px;
+  background: #f9f9f9;
   color: black;
   font-size: 24px;
   cursor: pointer;
-  height: 100%;
-  width: 20%;
+  height: 80%;
+  width: 18%;
   box-sizing: border-box;
   text-decoration: none;
   white-space: nowrap;
   user-select: none;
+  
+  /* More vertical shadow */
+  box-shadow: 0px 4px 6px #bbb, 0px -2px 4px #fff;
+  transition: all 0.1s ease-in-out;
 }
 
 .generate:active {
-  animation: none;
-}
-
-/* Ripple effect for .generate button (centered, 1.2s, does not affect content alignment) */
-.generate {
-  position: relative;
-  overflow: hidden;
+  /* Inset shadow on press */
+  box-shadow: inset 0px 4px 6px #bbb, inset 0px -2px 4px #fff;
+  transform: translateY(1px);
 }
 
 /* Toolbar Functions */
@@ -836,7 +835,7 @@ body {
   
   .mobile-btn-wrapper .generate {
     width: 100%;
-    height: 48px;
+    height: 56px;
     font-size: 1.2rem;
     display: flex;
     justify-content: center;
@@ -844,13 +843,12 @@ body {
     margin-bottom: env(safe-area-inset-bottom, 12px);
   }
 
-
   .palette {
     position: fixed;
     top: 12vh;
     left: 0;
     right: 0;
-    bottom: 15vh;
+    bottom: 17vh;
     height: auto;
     width: 100vw;
     display: flex;
@@ -897,7 +895,7 @@ body {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 14vh;
+    height: 15vh;
     background-color: var(--bg-color);
     border-top: 1px solid var(--border-color);
     padding-bottom: 10px;
@@ -908,10 +906,12 @@ body {
     align-items: center;
     gap: 10px;
     margin: 0 auto;
+    padding: 10px 0 5px 0;
   }
 
   .toolbar-right {
     width: 100%;
+    height: 48px;
     display: flex;
     justify-content: center;
     flex-direction: row;
