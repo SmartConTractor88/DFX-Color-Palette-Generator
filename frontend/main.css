@@ -208,11 +208,31 @@ body {
   padding: 0.5rem 1rem;
   cursor: pointer;
   transition: background 0.2s;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
 .dropdown-option i {
   margin-right: 0.2rem;
   color: var(--accent-bright);
+}
+
+.dropdown-option-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-option-title {
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dropdown-option-subtitle {
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.1;
+  margin-top: 0.1rem;
 }
 
 .dropdown-option.disabled {

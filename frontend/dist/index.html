@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@dfinity/auth-client@latest/dist/auth-client.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@dfinity/plug-wallet@latest/dist/plug.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chroma-js@2.1.0/chroma.min.js"></script>
     <link
@@ -12,8 +13,8 @@
     />
     <title>Color Palette</title>
     <link rel="icon" type="image/png" href="./assets/HueHut_drop--_0oEjo1.png">
-    <script type="module" crossorigin src="./assets/index-D3YYybpz.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CliqUbLF.css">
+    <script type="module" crossorigin src="./assets/index-BLNcRb6U.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DxAUQUOw.css">
   </head>
   <body>
     <nav class="navbar">
@@ -37,7 +38,22 @@
           <div class="dropdown-header">Sign in with:</div>
           <div class="dropdown-option" id="login-ii">
             <i class="fa-solid fa-infinity"></i>
-            Internet Identity
+            <div class="dropdown-option-content">
+              <div class="dropdown-option-title">Internet Identity</div>
+            </div>
+          </div>
+          <div class="dropdown-option" id="login-nfid">
+            <i class="fa-solid fa-key"></i>
+            <div class="dropdown-option-content">
+              <div class="dropdown-option-title">Account</div>
+              <div class="dropdown-option-subtitle">Google • Apple • Email</div>
+            </div>
+          </div>
+          <div class="dropdown-option" id="login-plug">
+            <i class="fa-solid fa-wallet"></i>
+            <div class="dropdown-option-content">
+              <div class="dropdown-option-title">Plug Wallet</div>
+            </div>
           </div>
           <div class="dropdown-divider"></div>
           <div class="dropdown-option disabled" id="logout">Sign Out</div>

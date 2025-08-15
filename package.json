@@ -11,6 +11,8 @@
   ],
   "dependencies": {
     "@dfinity/auth-client": "^2.4.1",
+    "culori": "^4.0.2",
+    "dotenv": "^17.2.1",
     "html2canvas": "^1.4.1"
   }
 }

@@ -4,6 +4,7 @@
 import { backend } from 'declarations/backend';
 import { AuthClient } from "@dfinity/auth-client";
 import html2canvas from 'html2canvas';
+import { getNewColor } from './colors';
 
 // ================================
 // Global Variables
@@ -574,10 +575,255 @@ function syncPaletteStateToDOMOrder() {
   }
 }
 
-function generateRandomHexColor() {
-  // Generate a random hex color string
-  const hex = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
-  return '#' + hex.toUpperCase();
+function renderPaletteFromState() {
+  // Takes the global paletteState and updates the .gen-color divs to match it
+  const colorDivs = document.querySelectorAll('.gen-color');
+  
+  colorDivs.forEach((div, i) => {
+    const entry = paletteState[i];
+    if (!entry || !div) return;
+    
+    // Attach paletteState reference to the div for drag reordering
+    div._paletteStateRef = entry;
+    // Set background color
+    div.style.backgroundColor = entry.color;
+    // Remove loading class
+    div.classList.remove('loading');
+    
+    // --- Restore DOM content: hex code, icons, etc. ---
+    div.innerHTML = '';
+    const textColor = chroma(entry.color).luminance() > 0.5 ? '#000' : '#fff';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'hex-wrapper';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '6.6px';
+    
+    // --- HEX CODE DISPLAY/EDIT LOGIC ---
+    const hexText = document.createElement('span');
+    hexText.className = 'hex-code';
+    hexText.innerText = entry.color.replace(/^#/, '').toUpperCase();
+    hexText.style.color = textColor;
+    hexText.tabIndex = 0;
+    hexText.addEventListener('click', () => switchToInput(hexText, div, i));
+    hexText.addEventListener('touchend', (e) => {
+      if (e.cancelable && e.touches && e.touches.length > 0) {
+        e.preventDefault();
+      }
+      switchToInput(hexText, div, i);
+    });
+    hexText.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        switchToInput(hexText, div, i);
+      }
+    });
+    
+    // --- End HEX CODE DISPLAY/EDIT LOGIC ---
+    const copyIcon = document.createElement('i');
+    copyIcon.className = 'fas fa-copy copy-icon';
+    copyIcon.style.color = textColor;
+    copyIcon.title = 'Copy to clipboard';
+    copyIcon.onclick = () => {
+      let hexValue = null;
+      const input = div.querySelector('.hex-input');
+      const span = div.querySelector('.hex-code');
+      if (input && document.activeElement === input) {
+        hexValue = input.value.toUpperCase();
+      } else if (span) {
+        hexValue = span.innerText.toUpperCase();
+      }
+      if (hexValue && hexValue.length > 0) {
+        navigator.clipboard.writeText(hexValue).then(() => {
+          copyIcon.classList.replace('fa-copy', 'fa-check');
+          setTimeout(() => {
+            copyIcon.classList.replace('fa-check', 'fa-copy');
+          }, 1000);
+        });
+      }
+    };
+    
+    const dragIcon = document.createElement('i');
+    dragIcon.className = 'fa-solid fa-left-right';
+    dragIcon.style.color = textColor;
+    dragIcon.style.fontSize = '1.2rem';
+    dragIcon.title = 'Drag to reorder';
+    dragIcon.style.cursor = 'grab';
+    
+    const lockIcon = document.createElement('i');
+    lockIcon.className = 'fa-solid fa-lock-open lock-icon';
+    lockIcon.style.color = textColor;
+    lockIcon.title = 'Lock color';
+    
+    const heartIcon = document.createElement('i');
+    heartIcon.className = 'far fa-heart color-heart-icon';
+    heartIcon.style.color = textColor;
+    heartIcon.title = 'Save color to favorites';
+    
+    if (userIsLoggedIn) {
+      heartIcon.style.display = 'block';
+      heartIcon.classList.remove('hidden');
+      const currentHexCode = entry.color.replace(/^#/, '').toUpperCase();
+      const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
+      if (favoriteHexCodes.includes(currentHexCode)) {
+        heartIcon.classList.remove('far');
+        heartIcon.classList.add('fas');
+      }
+      
+      // --- Add click event handler for heart icon ---
+      heartIcon.onclick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!userIsLoggedIn) {
+          alert('Please log in to save favorite colors.');
+          return;
+        }
+        // Get current hex value from input or span
+        let currentHexCode = null;
+        const input = div.querySelector('.hex-input');
+        const span = div.querySelector('.hex-code');
+        if (input && document.activeElement === input) {
+          currentHexCode = input.value.toUpperCase();
+        } else if (span) {
+          currentHexCode = span.innerText.toUpperCase();
+        } else {
+          currentHexCode = entry.color.replace(/^#/, '').toUpperCase();
+        }
+        if (!currentHexCode || currentHexCode.length === 0) {
+          alert('Invalid color code.');
+          return;
+        }
+        const isLiked = heartIcon.classList.contains('fas');
+        if (isLiked) {
+          // Remove from favorites
+          heartIcon.classList.remove('fas');
+          heartIcon.classList.add('far');
+          try {
+            await backend.delete_color(currentHexCode);
+            sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== currentHexCode);
+            updateAllHeartIconsForColor(currentHexCode, false);
+          } catch (err) {
+            heartIcon.classList.remove('far');
+            heartIcon.classList.add('fas');
+            alert('Failed to remove color from favorites: ' + err.message);
+          }
+        } else {
+          // Add to favorites
+          heartIcon.classList.remove('far');
+          heartIcon.classList.add('fas');
+          try {
+            await backend.add_color(currentHexCode);
+            sidebarFavoriteColors.push({ hex_code: currentHexCode });
+            updateAllHeartIconsForColor(currentHexCode, true);
+          } catch (err) {
+            heartIcon.classList.remove('fas');
+            heartIcon.classList.add('far');
+            alert('Failed to save color to favorites: ' + err.message);
+          }
+        }
+      };
+    } else {
+      heartIcon.style.display = 'none';
+      heartIcon.classList.add('hidden');
+    }
+    
+    // Read lock status from paletteState instead of DOM dataset
+    let isLocked = entry.isLocked;
+    if (isLocked) {
+      lockIcon.classList.remove('fa-lock-open');
+      lockIcon.classList.add('fa-lock');
+      lockIcon.title = 'Unlock color';
+    }
+    
+    lockIcon.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      isLocked = !isLocked;
+      // Update paletteState directly instead of DOM dataset
+      if (Array.isArray(paletteState) && paletteState[i]) {
+        paletteState[i].isLocked = isLocked;
+        if (isLocked) {
+          // Save the current color as the locked color
+          let currentColor = null;
+          // Prefer input value if present and valid
+          const input = div.querySelector('.hex-input');
+          if (input && input.value && input.value.length > 0) {
+            let val = input.value.toUpperCase().replace(/[^0-9A-F]/g, '');
+            if (val.length === 6) {
+              currentColor = '#' + val;
+            } else if (val.length > 0) {
+              currentColor = '#' + val.padEnd(6, '0');
+            }
+          }
+          // Fallback to background color if no valid input
+          if (!currentColor) {
+            currentColor = div.style.backgroundColor;
+            // Convert rgb to hex if needed
+            if (currentColor.startsWith('rgb')) {
+              const rgb = currentColor.match(/\d+/g);
+              if (rgb && rgb.length >= 3) {
+                currentColor = '#' + rgb.slice(0,3).map(x => (+x).toString(16).padStart(2, '0')).join('').toUpperCase();
+              }
+            }
+          }
+          paletteState[i].color = currentColor;
+        }
+      }
+      if (isLocked) {
+        lockIcon.classList.remove('fa-lock-open');
+        lockIcon.classList.add('fa-lock');
+        lockIcon.title = 'Unlock color';
+      } else {
+        lockIcon.classList.remove('fa-lock');
+        lockIcon.classList.add('fa-lock-open');
+        lockIcon.title = 'Lock color';
+      }
+    });
+    
+    if (window.innerWidth <= 768) {
+      const left = document.createElement('div');
+      left.className = 'hex-left';
+      left.style.display = 'flex';
+      left.style.alignItems = 'center';
+      left.style.flex = '1 1 auto';
+      left.appendChild(hexText);
+      
+      const right = document.createElement('div');
+      right.className = 'hex-right';
+      right.style.display = 'flex';
+      right.style.alignItems = 'center';
+      right.style.gap = '12px';
+      right.style.flex = '0 0 auto';
+      right.appendChild(copyIcon);
+      right.appendChild(dragIcon);
+      right.appendChild(lockIcon);
+      right.appendChild(heartIcon);
+      
+      div.appendChild(left);
+      div.appendChild(right);
+    } else {
+      wrapper.appendChild(hexText);
+      wrapper.appendChild(copyIcon);
+      wrapper.appendChild(dragIcon);
+      wrapper.appendChild(lockIcon);
+      wrapper.appendChild(heartIcon);
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = 'center';
+      wrapper.style.justifyContent = 'center';
+      div.appendChild(wrapper);
+    }
+  });
+  
+  enforceGenColorLayout();
+  initDragAndDrop();
+  bindInputEvents();
+  enforceIconVisibility();
+  
+  // After rebuilding the DOM, sync heart icons with favorite colors
+  if (typeof updateHeartIconsForColors === 'function') {
+    try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
+  }
+  try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
 }
 
 function generatePalette() {
@@ -593,245 +839,18 @@ function generatePalette() {
     // --- PALETTE STATE LOGIC ---
     // 1. If paletteState doesn't exist, create it with 5 random colors, all unlocked
     if (!paletteState || paletteState.length !== 5) {
-      paletteState = Array.from({ length: 5 }, () => ({ color: generateRandomHexColor(), isLocked: false }));
+      paletteState = Array.from({ length: 5 }, (_, i) => ({ color: getNewColor(i, paletteState), isLocked: false }));
     }
-
-
 
     // 2. Only update the color of unlocked entries in paletteState
     paletteState.forEach((entry, i) => {
       if (!entry.isLocked) {
-        entry.color = generateRandomHexColor();
+        entry.color = getNewColor(i, paletteState);
       }
     });
 
-    // 3. Update the .gen-color divs in DOM order, applying paletteState in order
-    colorDivs.forEach((div, i) => {
-      const entry = paletteState[i];
-      if (!entry || !div) return;
-      // Attach paletteState reference to the div for drag reordering
-      div._paletteStateRef = entry;
-      // Sync lock state to div
-      div.dataset.locked = entry.isLocked;
-      // Set background color
-      div.style.backgroundColor = entry.color;
-      // Remove loading class
-      div.classList.remove('loading');
-      // --- Restore DOM content: hex code, icons, etc. ---
-      div.innerHTML = '';
-      const textColor = chroma(entry.color).luminance() > 0.5 ? '#000' : '#fff';
-      const wrapper = document.createElement('div');
-      wrapper.className = 'hex-wrapper';
-      wrapper.style.display = 'flex';
-      wrapper.style.alignItems = 'center';
-      wrapper.style.gap = '6.6px';
-      // --- HEX CODE DISPLAY/EDIT LOGIC ---
-      const hexText = document.createElement('span');
-      hexText.className = 'hex-code';
-      hexText.innerText = entry.color.replace(/^#/, '').toUpperCase();
-      hexText.style.color = textColor;
-      hexText.tabIndex = 0;
-      hexText.addEventListener('click', () => switchToInput(hexText, div, i));
-      hexText.addEventListener('touchend', (e) => {
-        if (e.cancelable && e.touches && e.touches.length > 0) {
-          e.preventDefault();
-        }
-        switchToInput(hexText, div, i);
-      });
-      hexText.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          switchToInput(hexText, div, i);
-        }
-      });
-      
-      // --- End HEX CODE DISPLAY/EDIT LOGIC ---
-      const copyIcon = document.createElement('i');
-      copyIcon.className = 'fas fa-copy copy-icon';
-      copyIcon.style.color = textColor;
-      copyIcon.title = 'Copy to clipboard';
-      copyIcon.onclick = () => {
-        let hexValue = null;
-        const input = div.querySelector('.hex-input');
-        const span = div.querySelector('.hex-code');
-        if (input && document.activeElement === input) {
-          hexValue = input.value.toUpperCase();
-        } else if (span) {
-          hexValue = span.innerText.toUpperCase();
-        }
-        if (hexValue && hexValue.length > 0) {
-          navigator.clipboard.writeText(hexValue).then(() => {
-            copyIcon.classList.replace('fa-copy', 'fa-check');
-            setTimeout(() => {
-              copyIcon.classList.replace('fa-check', 'fa-copy');
-            }, 1000);
-          });
-        }
-      };
-      const dragIcon = document.createElement('i');
-      dragIcon.className = 'fa-solid fa-left-right';
-      dragIcon.style.color = textColor;
-      dragIcon.style.fontSize = '1.2rem';
-      dragIcon.title = 'Drag to reorder';
-      dragIcon.style.cursor = 'grab';
-      const lockIcon = document.createElement('i');
-      lockIcon.className = 'fa-solid fa-lock-open lock-icon';
-      lockIcon.style.color = textColor;
-      lockIcon.title = 'Lock color';
-      const heartIcon = document.createElement('i');
-      heartIcon.className = 'far fa-heart color-heart-icon';
-      heartIcon.style.color = textColor;
-      heartIcon.title = 'Save color to favorites';
-      if (userIsLoggedIn) {
-        heartIcon.style.display = 'block';
-        heartIcon.classList.remove('hidden');
-        const currentHexCode = entry.color.replace(/^#/, '').toUpperCase();
-        const favoriteHexCodes = sidebarFavoriteColors.map(c => c.hex_code.toUpperCase());
-        if (favoriteHexCodes.includes(currentHexCode)) {
-          heartIcon.classList.remove('far');
-          heartIcon.classList.add('fas');
-        }
-        // --- Add click event handler for heart icon ---
-        heartIcon.onclick = async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!userIsLoggedIn) {
-            alert('Please log in to save favorite colors.');
-            return;
-          }
-          // Get current hex value from input or span
-          let currentHexCode = null;
-          const input = div.querySelector('.hex-input');
-          const span = div.querySelector('.hex-code');
-          if (input && document.activeElement === input) {
-            currentHexCode = input.value.toUpperCase();
-          } else if (span) {
-            currentHexCode = span.innerText.toUpperCase();
-          } else {
-            currentHexCode = entry.color.replace(/^#/, '').toUpperCase();
-          }
-          if (!currentHexCode || currentHexCode.length === 0) {
-            alert('Invalid color code.');
-            return;
-          }
-          const isLiked = heartIcon.classList.contains('fas');
-          if (isLiked) {
-            // Remove from favorites
-            heartIcon.classList.remove('fas');
-            heartIcon.classList.add('far');
-            try {
-              await backend.delete_color(currentHexCode);
-              sidebarFavoriteColors = sidebarFavoriteColors.filter(c => c.hex_code.toUpperCase() !== currentHexCode);
-              updateAllHeartIconsForColor(currentHexCode, false);
-            } catch (err) {
-              heartIcon.classList.remove('far');
-              heartIcon.classList.add('fas');
-              alert('Failed to remove color from favorites: ' + err.message);
-            }
-          } else {
-            // Add to favorites
-            heartIcon.classList.remove('far');
-            heartIcon.classList.add('fas');
-            try {
-              await backend.add_color(currentHexCode);
-              sidebarFavoriteColors.push({ hex_code: currentHexCode });
-              updateAllHeartIconsForColor(currentHexCode, true);
-            } catch (err) {
-              heartIcon.classList.remove('fas');
-              heartIcon.classList.add('far');
-              alert('Failed to save color to favorites: ' + err.message);
-            }
-          }
-        };
-      } else {
-        heartIcon.style.display = 'none';
-        heartIcon.classList.add('hidden');
-      }
-      // Read lock status from paletteState instead of DOM dataset
-      let isLocked = entry.isLocked;
-      if (isLocked) {
-        lockIcon.classList.remove('fa-lock-open');
-        lockIcon.classList.add('fa-lock');
-        lockIcon.title = 'Unlock color';
-      }
-      lockIcon.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        isLocked = !isLocked;
-        // Update paletteState directly instead of DOM dataset
-        if (Array.isArray(paletteState) && paletteState[i]) {
-          paletteState[i].isLocked = isLocked;
-          if (isLocked) {
-            // Save the current color as the locked color
-            let currentColor = null;
-            // Prefer input value if present and valid
-            const input = div.querySelector('.hex-input');
-            if (input && input.value && input.value.length > 0) {
-              let val = input.value.toUpperCase().replace(/[^0-9A-F]/g, '');
-              if (val.length === 6) {
-                currentColor = '#' + val;
-              } else if (val.length > 0) {
-                currentColor = '#' + val.padEnd(6, '0');
-              }
-            }
-            // Fallback to background color if no valid input
-            if (!currentColor) {
-              currentColor = div.style.backgroundColor;
-              // Convert rgb to hex if needed
-              if (currentColor.startsWith('rgb')) {
-                const rgb = currentColor.match(/\d+/g);
-                if (rgb && rgb.length >= 3) {
-                  currentColor = '#' + rgb.slice(0,3).map(x => (+x).toString(16).padStart(2, '0')).join('').toUpperCase();
-                }
-              }
-            }
-            paletteState[i].color = currentColor;
-          }
-        }
-        if (isLocked) {
-          lockIcon.classList.remove('fa-lock-open');
-          lockIcon.classList.add('fa-lock');
-          lockIcon.title = 'Unlock color';
-        } else {
-          lockIcon.classList.remove('fa-lock');
-          lockIcon.classList.add('fa-lock-open');
-          lockIcon.title = 'Lock color';
-        }
-      });
-      if (window.innerWidth <= 768) {
-        const left = document.createElement('div');
-        left.className = 'hex-left';
-        left.style.display = 'flex';
-        left.style.alignItems = 'center';
-        left.style.flex = '1 1 auto';
-        left.appendChild(hexText);
-        const right = document.createElement('div');
-        right.className = 'hex-right';
-        right.style.display = 'flex';
-        right.style.alignItems = 'center';
-        right.style.gap = '12px';
-        right.style.flex = '0 0 auto';
-        right.appendChild(copyIcon);
-        right.appendChild(dragIcon);
-        right.appendChild(lockIcon);
-        right.appendChild(heartIcon);
-        div.appendChild(left);
-        div.appendChild(right);
-      } else {
-        wrapper.appendChild(hexText);
-        wrapper.appendChild(copyIcon);
-        wrapper.appendChild(dragIcon);
-        wrapper.appendChild(lockIcon);
-        wrapper.appendChild(heartIcon);
-        wrapper.style.flexDirection = 'column';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.justifyContent = 'center';
-        div.appendChild(wrapper);
-      }
-    });
-    enforceGenColorLayout();
-    initDragAndDrop();
-    updatePaletteDOM();
+    // 3. Render the updated palette state to the DOM
+    renderPaletteFromState();
   } catch (e) {
     console.error('Error generating palette:', e);
   }
@@ -957,7 +976,7 @@ function updateColorFromInput(input) {
     // Record current state before changing it
     recordPaletteChange(prev);
     paletteState[index].color = hex;
-    updatePaletteDOM();
+    renderPaletteFromState();
     // Ensure heart icons reflect favorites after input update
     if (typeof updateHeartIconsForColors === 'function') {
       try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
@@ -1035,7 +1054,6 @@ function updatePaletteDOM() {
 
     div.innerHTML = '';
     div.style.backgroundColor = color;
-    div.dataset.locked = isLocked;
 
     const textColor = chroma(color).luminance() > 0.5 ? '#000' : '#fff';
 
@@ -1087,7 +1105,7 @@ function updatePaletteDOM() {
       e.preventDefault();
       e.stopPropagation();
       paletteState[i].isLocked = !paletteState[i].isLocked;
-      updatePaletteDOM(); // Refresh UI
+      renderPaletteFromState(); // Refresh UI
     });
 
     const heartIcon = document.createElement('i');
@@ -1208,7 +1226,7 @@ function handleUndo() {
   redoStack.push(JSON.parse(JSON.stringify(paletteState)));
   paletteState = JSON.parse(JSON.stringify(undoStack.pop()));
 
-  updatePaletteDOM();
+  renderPaletteFromState();
   updateUndoRedoButtons();
   
   // Ensure toolbar heart icon is updated after undo operation
@@ -1225,7 +1243,7 @@ function handleRedo() {
   paletteState = next; // Apply next state
 
 
-  updatePaletteDOM();
+  renderPaletteFromState();
   updateUndoRedoButtons();
   
   // Ensure toolbar heart icon is updated after redo operation
@@ -1442,7 +1460,6 @@ function renderSidebarFavoritePalettes() {
       const idx = parseInt(btn.dataset.idx, 10);
       const palette = sidebarFavoritePalettes[idx];
       loadPaletteToMain(palette);
-      updatePaletteDOM();
       closeSidebarFavorites();
       
       // Ensure toolbar heart icon is updated after loading palette
@@ -1489,7 +1506,7 @@ function renderSidebarFavoritePalettes() {
   }));
 
   // Then record the change
-  updatePaletteDOM();
+  renderPaletteFromState();
   
   // Force update toolbar heart icon after loading palette
   forceUpdateToolbarHeartIcon();
@@ -2431,23 +2448,65 @@ copyPrincipalIcon.addEventListener("click", () => {
 
 async function initAuth() {
   authClient = authClient || await AuthClient.create();
+  
+  // Check if user is authenticated via AuthClient (Internet Identity or NFID)
   if (await authClient.isAuthenticated()) {
     const identity = authClient.getIdentity();
     const principal = identity.getPrincipal().toText();
     updateIdentityDisplay(principal);
-  } else {
-    userIsLoggedIn = false;
-    username = null;
-    profileName.textContent = "Sign In";
-    fullPrincipalSpan.textContent = "";
-    tooltip.style.display = "none";
-    logoutButton.classList.add("disabled");
-    updateFavoritesUI(false);
-    // Remove username section from dropdown if present
-    removeUserMenuIdentitySection();
+    return;
   }
+  
+  // Check if user is connected via Plug wallet
+  if (window.ic && window.ic.plug) {
+    try {
+      const isConnected = await window.ic.plug.isConnected();
+      if (isConnected) {
+        const principal = await window.ic.plug.agent.getPrincipal();
+        const principalText = principal.toText();
+        updateIdentityDisplay(principalText);
+        return;
+      }
+    } catch (error) {
+      console.log("Plug wallet connection check failed:", error);
+      // If there's an error checking connection, try to disconnect to reset state
+      try {
+        await window.ic.plug.disconnect();
+      } catch (disconnectError) {
+        console.log("Plug wallet disconnect error:", disconnectError);
+      }
+    }
+  } else {
+    // If Plug wallet is not available yet, wait a bit and try again
+    setTimeout(async () => {
+      if (window.ic && window.ic.plug) {
+        try {
+          const isConnected = await window.ic.plug.isConnected();
+          if (isConnected) {
+            const principal = await window.ic.plug.agent.getPrincipal();
+            const principalText = principal.toText();
+            updateIdentityDisplay(principalText);
+          }
+        } catch (error) {
+          console.log("Delayed Plug wallet connection check failed:", error);
+        }
+      }
+    }, 1000);
+  }
+  
+  // No authentication found
+  userIsLoggedIn = false;
+  username = null;
+  profileName.textContent = "Sign In";
+  fullPrincipalSpan.textContent = "";
+  tooltip.style.display = "none";
+  logoutButton.classList.add("disabled");
+  updateFavoritesUI(false);
+  // Remove username section from dropdown if present
+  removeUserMenuIdentitySection();
 }
 
+// Internet Identity login button event listener
 loginButton.addEventListener("click", async () => {
   if (!authClient) {
     authClient = await AuthClient.create();
@@ -2461,6 +2520,53 @@ loginButton.addEventListener("click", async () => {
   });
 });
 
+// NFID login button event listener
+const loginNfidButton = document.getElementById("login-nfid");
+loginNfidButton.addEventListener("click", async () => {
+  if (!authClient) {
+    authClient = await AuthClient.create();
+  }
+  await authClient.login({
+    identityProvider: "https://nfid.one/authenticate",
+    onSuccess: async () => {
+      const principal = authClient.getIdentity().getPrincipal().toText();
+      updateIdentityDisplay(principal);
+    }
+  });
+});
+
+// Plug Wallet login button event listener
+const loginPlugButton = document.getElementById("login-plug");
+loginPlugButton.addEventListener("click", async () => {
+  try {
+    // Check if Plug wallet extension is available
+    if (!window.ic || !window.ic.plug) {
+      alert("Plug wallet extension is not installed. Please install it from https://plugwallet.ooo/");
+      return;
+    }
+
+    // Request connection to Plug wallet
+    await window.ic.plug.requestConnect({
+      whitelist: ["rimxq-wyaaa-aaaae-qfd2q-cai"], // Backend canister ID
+      host: "https://mainnet.dfinity.network"
+    });
+
+    // Get the principal from Plug wallet
+    const principal = await window.ic.plug.agent.getPrincipal();
+    const principalText = principal.toText();
+    
+    // Update the identity display
+    updateIdentityDisplay(principalText);
+  } catch (error) {
+    console.error("Plug wallet login failed:", error);
+    if (error.message && error.message.includes("User rejected")) {
+      alert("Connection to Plug wallet was cancelled.");
+    } else {
+      alert("Failed to connect to Plug wallet. Please try again.");
+    }
+  }
+});
+
 if (logoutButton) {
   logoutButton.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -2471,10 +2577,21 @@ if (logoutButton) {
     }
 
     try {
+      // Logout from AuthClient (Internet Identity and NFID)
       if (!authClient) {
         authClient = await AuthClient.create();
       }
       await authClient.logout({ returnTo: window.location.origin });
+      
+      // Disconnect from Plug wallet if connected
+      if (window.ic && window.ic.plug) {
+        try {
+          await window.ic.plug.disconnect();
+        } catch (plugError) {
+          console.log("Plug wallet disconnect error (may not be connected):", plugError);
+        }
+      }
+      
       console.log("Logout success, reloading page");
       window.location.reload();
     } catch (err) {
@@ -2704,8 +2821,8 @@ async function initialPaletteLoad() {
   sidebarFavoritesPalettes = document.getElementById('sidebar-favorites-palettes');
   sidebarFavoritesColors = document.getElementById('sidebar-favorites-colors');
   // Only generate one palette and record the initial state
-  paletteState = Array.from({ length: 5 }, () => ({ color: generateRandomHexColor(), isLocked: false }));
-  updatePaletteDOM();
+  paletteState = Array.from({ length: 5 }, (_, i) => ({ color: getNewColor(i, paletteState), isLocked: false }));
+  renderPaletteFromState();
   // Fetch favorites after DOM is ready
   if (userIsLoggedIn) {
     fetchFavoritesFromBackend();
@@ -2940,7 +3057,6 @@ function rebuildGenColorDOMForLayout() {
 
     div.innerHTML = '';
     div.style.backgroundColor = color;
-    div.dataset.locked = isLocked;
 
     const hex = color.replace(/^#/, '').toUpperCase();
     let textColor = '#fff';
@@ -2995,7 +3111,7 @@ function rebuildGenColorDOMForLayout() {
       e.preventDefault();
       e.stopPropagation();
       paletteState[i].isLocked = !paletteState[i].isLocked;
-      updatePaletteDOM();
+      renderPaletteFromState();
     });
 
     const heartIcon = document.createElement('i');

@@ -6,6 +6,7 @@
     <link rel="stylesheet" href="main.css" />
     <script type="module" src="./index.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@dfinity/auth-client@latest/dist/auth-client.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@dfinity/plug-wallet@latest/dist/plug.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chroma-js@2.1.0/chroma.min.js"></script>
     <link
@@ -37,7 +38,22 @@
           <div class="dropdown-header">Sign in with:</div>
           <div class="dropdown-option" id="login-ii">
             <i class="fa-solid fa-infinity"></i>
-            Internet Identity
+            <div class="dropdown-option-content">
+              <div class="dropdown-option-title">Internet Identity</div>
+            </div>
+          </div>
+          <div class="dropdown-option" id="login-nfid">
+            <i class="fa-solid fa-key"></i>
+            <div class="dropdown-option-content">
+              <div class="dropdown-option-title">Account</div>
+              <div class="dropdown-option-subtitle">Google • Apple • Email</div>
+            </div>
+          </div>
+          <div class="dropdown-option" id="login-plug">
+            <i class="fa-solid fa-wallet"></i>
+            <div class="dropdown-option-content">
+              <div class="dropdown-option-title">Plug Wallet</div>
+            </div>
           </div>
           <div class="dropdown-divider"></div>
           <div class="dropdown-option disabled" id="logout">Sign Out</div>

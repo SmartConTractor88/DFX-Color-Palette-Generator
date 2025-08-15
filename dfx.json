@@ -22,7 +22,7 @@
       "type": "assets",
       "headers": {
         "/": {
-          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval'; object-src 'none'; connect-src 'self' https://identity.ic0.app; style-src 'self' 'unsafe-inline';"
+          "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net; object-src 'none'; connect-src 'self' https://identity.ic0.app https://mainnet.dfinity.network https://ic0.app; style-src 'self' 'unsafe-inline';"
         }
       }
     },
