@@ -547,11 +547,21 @@ function cleanupDrag() {
 // Utility Functions
 // ================================
 function getTextColor(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  return brightness > 128 ? "#000000" : "#FFFFFF";
+    // Fallback for when chroma is not available
+    if (typeof window !== 'undefined' && window.chroma) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 128 ? "#000000" : "#FFFFFF";
+    } else {
+        // Simple fallback calculation
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness > 128 ? "#000000" : "#FFFFFF";
+    }
 }
 
 // ================================
@@ -592,7 +602,7 @@ function renderPaletteFromState() {
     
     // --- Restore DOM content: hex code, icons, etc. ---
     div.innerHTML = '';
-    const textColor = chroma(entry.color).luminance() > 0.5 ? '#000' : '#fff';
+    const textColor = getTextColor(entry.color);
     const wrapper = document.createElement('div');
     wrapper.className = 'hex-wrapper';
     wrapper.style.display = 'flex';
@@ -853,6 +863,12 @@ function generatePalette() {
     renderPaletteFromState();
   } catch (e) {
     console.error('Error generating palette:', e);
+    // Fallback: generate random colors if there's an error
+    paletteState = Array.from({ length: 5 }, () => ({ 
+      color: '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0').toUpperCase(), 
+      isLocked: false 
+    }));
+    renderPaletteFromState();
   }
 }
 
@@ -885,7 +901,7 @@ function switchToInput(hexText, div, i) {
     input.value = val;
     let padded = val.padEnd(6, '0');
     div.style.backgroundColor = '#' + padded;
-    const liveTextColor = chroma('#' + padded).luminance() > 0.5 ? '#000' : '#fff';
+    const liveTextColor = getTextColor('#' + padded);
     input.style.color = liveTextColor;
     div.querySelectorAll('i').forEach(icon => icon.style.color = liveTextColor);
     // Keep heart icons in sync with favorite colors during live edits
@@ -914,7 +930,7 @@ function switchToInput(hexText, div, i) {
     val = val.padEnd(6, '0');
     hexText.innerText = val;
     div.style.backgroundColor = '#' + val;
-    const liveTextColor = chroma('#' + val).luminance() > 0.5 ? '#000' : '#fff';
+    const liveTextColor = getTextColor('#' + val);
     hexText.style.color = liveTextColor;
     div.querySelectorAll('i').forEach(icon => icon.style.color = liveTextColor);
     if (Array.isArray(paletteState) && paletteState[i]) {
@@ -2821,6 +2837,8 @@ async function initialPaletteLoad() {
   sidebarFavoritesPalettes = document.getElementById('sidebar-favorites-palettes');
   sidebarFavoritesColors = document.getElementById('sidebar-favorites-colors');
   // Only generate one palette and record the initial state
+  // Initialize paletteState as null first, then create colors
+  paletteState = null;
   paletteState = Array.from({ length: 5 }, (_, i) => ({ color: getNewColor(i, paletteState), isLocked: false }));
   renderPaletteFromState();
   // Fetch favorites after DOM is ready
