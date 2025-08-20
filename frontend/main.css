@@ -1076,7 +1076,9 @@ body {
     display: block;
     flex: 1 1 auto;
   }
-  .gen-color .copy-icon,
+  .gen-color .copy-icon {
+    display: none !important;
+  }
   .gen-color .fa-left-right,
   .gen-color .color-heart-icon {
     position: static;

@@ -4,20 +4,39 @@ function generateRandomHexColor() {
 }
 
 const roleDistribution = [
-    { role: 'neutral', weight: 0.35 },
-    { role: 'accent', weight: 0.3 },
-    { role: 'variant', weight: 0.35 } // new role replaces "bridge"
+    { role: 'neutral', weight: 0.28 },
+    { role: 'accent', weight: 0.37 },
+    { role: 'variant', weight: 0.35 }
 ];
 
-function pickRole(roleDistribution) {
-    const totalWeight = roleDistribution.reduce((sum, r) => sum + r.weight, 0);
+// track used roles within one palette generation
+let usedRoles = new Set();
+
+function pickRoleWithDiversity() {
+    // if we already used all roles, reset
+    if (usedRoles.size >= roleDistribution.length) {
+        usedRoles.clear();
+    }
+
+    // filter roles: lower weight if already used
+    const adjusted = roleDistribution.map(r => ({
+        role: r.role,
+        weight: usedRoles.has(r.role) ? r.weight * 0.3 : r.weight // diminish repeats
+    }));
+
+    const totalWeight = adjusted.reduce((sum, r) => sum + r.weight, 0);
     let rand = Math.random() * totalWeight;
-    for (const r of roleDistribution) {
-        if (rand < r.weight) return r.role;
+    for (const r of adjusted) {
+        if (rand < r.weight) {
+            usedRoles.add(r.role);
+            return r.role;
+        }
         rand -= r.weight;
     }
-    return roleDistribution[0].role;
+    // fallback
+    return adjusted[0].role;
 }
+
 
 function averageColors(colors) {
     if (colors.length === 0) return generateRandomHexColor();
@@ -48,10 +67,27 @@ function generateNeutralColor(baseColor) {
     const b = parseInt(hex.substr(4, 2), 16);
 
     const avg = Math.round((r + g + b) / 3);
-    const brightness = Math.random() * 0.8 + 0.1;
-    const newVal = Math.round(avg * brightness);
 
-    return '#' + [newVal, newVal, newVal].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    // pick light or dark bias more often, avoid muddy middle range
+    let brightness;
+    const roll = Math.random();
+    if (roll < 0.45) {
+        // 45% chance: light gray / near white
+        brightness = 0.75 + Math.random() * 0.25; // 75%–100%
+    } else if (roll < 0.9) {
+        // 45% chance: dark gray / near black
+        brightness = 0.05 + Math.random() * 0.25; // 5%–30%
+    } else {
+        // 10% chance: allow mid-gray for variety
+        brightness = 0.35 + Math.random() * 0.15; // 35%–50%
+    }
+
+    const newVal = Math.max(0, Math.min(255, Math.round(avg * brightness)));
+
+    return '#' + [newVal, newVal, newVal]
+        .map(x => x.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
 }
 
 function generateAccentColor(baseColor) {
@@ -102,10 +138,28 @@ function generateVariantColor(baseColor) {
         .toUpperCase();
 }
 
+function isNeutralColor(hex) {
+    const r = parseInt(hex.substr(1, 2), 16);
+    const g = parseInt(hex.substr(3, 2), 16);
+    const b = parseInt(hex.substr(5, 2), 16);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const sat = max === 0 ? 0 : (max - min) / max; // simple saturation measure
+    return sat < 0.15; // consider “neutral” if very low saturation
+}
+
 function getBaseColorFromLocks(lockedColors) {
     if (lockedColors.length === 0) {
         return generateRandomHexColor();
-    } else if (lockedColors.length === 1) {
+    }
+
+    // if all locked colors are neutral → ignore them as base
+    const allNeutral = lockedColors.every(c => isNeutralColor(c));
+    if (allNeutral) {
+        return generateRandomHexColor();
+    }
+
+    if (lockedColors.length === 1) {
         return lockedColors[0];
     } else if (lockedColors.length === 2) {
         const roll = Math.random();
@@ -122,8 +176,25 @@ function getBaseColorFromLocks(lockedColors) {
     }
 }
 
-// --- prevent duplicate colors per palette ---
+// --- prevent duplicate or too-similar colors per palette ---
 let usedColors = new Set();
+let usedColorList = []; // keep array for distance checking
+
+// helper: calculate perceptual distance between two hex colors
+function colorDistance(hex1, hex2) {
+    const r1 = parseInt(hex1.substr(1, 2), 16);
+    const g1 = parseInt(hex1.substr(3, 2), 16);
+    const b1 = parseInt(hex1.substr(5, 2), 16);
+    const r2 = parseInt(hex2.substr(1, 2), 16);
+    const g2 = parseInt(hex2.substr(3, 2), 16);
+    const b2 = parseInt(hex2.substr(5, 2), 16);
+
+    // simple Euclidean distance in RGB
+    const dr = r1 - r2;
+    const dg = g1 - g2;
+    const db = b1 - b2;
+    return Math.sqrt(dr * dr + dg * dg + db * db);
+}
 
 function ensureUniqueColor(generatorFn, ...args) {
     let attempt = 0;
@@ -131,20 +202,33 @@ function ensureUniqueColor(generatorFn, ...args) {
     do {
         color = generatorFn(...args);
         attempt++;
-    } while (usedColors.has(color) && attempt < 10);
+        // retry if duplicate or too similar
+    } while (
+        (usedColors.has(color) ||
+         usedColorList.some(c => colorDistance(c, color) < 40)) // 40 = min distance threshold
+        && attempt < 20
+    );
     usedColors.add(color);
+    usedColorList.push(color);
     return color;
 }
 
 function getNewColor(index, paletteState) {
     if (index === 0) {
-        usedColors = new Set(); // reset for a new palette
+        usedRoles.clear(); // reset at start of palette
+        usedColors = new Set(); // reset duplicate prevention
+        usedColorList = [];
     }
 
     const lockedColors = paletteState ? paletteState.filter(c => c.isLocked).map(c => c.color) : [];
-    const baseColor = getBaseColorFromLocks(lockedColors);
 
-    const role = pickRole(roleDistribution);
+    // NEW: check if all locked colors are neutral
+    const allNeutral = lockedColors.length > 0 && lockedColors.every(c => isNeutralColor(c));
+
+    // pick base normally unless all locked are neutral
+    const baseColor = allNeutral ? generateRandomHexColor() : getBaseColorFromLocks(lockedColors);
+
+    const role = pickRoleWithDiversity();
 
     switch (role) {
         case 'neutral':
@@ -161,7 +245,7 @@ function getNewColor(index, paletteState) {
 export {
     generateRandomHexColor,
     getNewColor,
-    pickRole,
+    pickRoleWithDiversity,
     generateNeutralColor,
     generateAccentColor,
     generateVariantColor

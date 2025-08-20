@@ -872,7 +872,330 @@ function generatePalette() {
   }
 }
 
-// Manual Input ----------------
+// ==============================
+// Manual Input
+// ==============================
+
+// --- Helpers: normalize hex and convert HEX -> HSL ---
+function normalizeHex(str) {
+  if (!str) return '#000000';
+  str = String(str).trim();
+  if (str[0] !== '#') str = '#' + str;
+  // Expand #RGB to #RRGGBB
+  if (/^#([0-9A-Fa-f]{3})$/.test(str)) {
+    str = '#' + str[1] + str[1] + str[2] + str[2] + str[3] + str[3];
+  }
+  // If now valid, return uppercased
+  if (/^#([0-9A-Fa-f]{6})$/.test(str)) return str.toUpperCase();
+
+  // Otherwise coerce to 6 hex chars
+  const only = str.replace(/[^0-9A-Fa-f]/g, '').slice(-6);
+  return ('#' + only.padEnd(6, '0')).toUpperCase();
+}
+
+function hexToHsl(hex) {
+  hex = normalizeHex(hex).slice(1); // drop '#'
+  const r = parseInt(hex.slice(0,2), 16) / 255;
+  const g = parseInt(hex.slice(2,4), 16) / 255;
+  const b = parseInt(hex.slice(4,6), 16) / 255;
+
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max + min) / 2;
+
+  if (max === min) {
+    h = 0; s = 0; // gray
+  } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  return { h: Math.round(h * 360), s, l };
+}
+
+// --- HSV / RGB helpers ---
+function hexToRgb(hex) {
+  hex = normalizeHex(hex);
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex(r, g, b) {
+  return (
+    "#" +
+    [r, g, b]
+      .map((n) => Math.max(0, Math.min(255, n)).toString(16).padStart(2, "0"))
+      .join("")
+  ).toUpperCase();
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const d = max - min;
+
+  let h = 0;
+  if (d !== 0) {
+    switch (max) {
+      case r: h = ((g - b) / d) % 6; break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+
+  const v = max;
+  const s = max === 0 ? 0 : d / max;
+  return { h: Math.round(h), s, v };
+}
+
+function hsvToRgb(h, s, v) {
+  const c = v * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = v - c;
+
+  let rp = 0, gp = 0, bp = 0;
+  if (0 <= h && h < 60) { rp = c; gp = x; bp = 0; }
+  else if (60 <= h && h < 120) { rp = x; gp = c; bp = 0; }
+  else if (120 <= h && h < 180) { rp = 0; gp = c; bp = x; }
+  else if (180 <= h && h < 240) { rp = 0; gp = x; bp = c; }
+  else if (240 <= h && h < 300) { rp = x; gp = 0; bp = c; }
+  else { rp = c; gp = 0; bp = x; }
+
+  return {
+    r: Math.round((rp + m) * 255),
+    g: Math.round((gp + m) * 255),
+    b: Math.round((bp + m) * 255),
+  };
+}
+
+function hexToHsv(hex) {
+  const { r, g, b } = hexToRgb(hex);
+  return rgbToHsv(r, g, b);
+}
+
+function hsvToHex(h, s, v) {
+  const { r, g, b } = hsvToRgb(h, s, v);
+  return rgbToHex(r, g, b);
+}
+
+// Color picker skeleton
+
+// --- Build Color Picker Skeleton + Live Updater ---
+function buildColorPickerSkeleton(colorPopup, initialHex) {
+  // Clear (in case of re-open)
+  colorPopup.innerHTML = '';
+
+  // Container padding/layout
+  colorPopup.style.display = 'flex';
+  colorPopup.style.flexDirection = 'column';
+  colorPopup.style.gap = '10px';
+  colorPopup.style.padding = '12px';
+
+  // Matrix (S/L square)
+  const matrix = document.createElement('div');
+  matrix.style.position = 'relative';
+  matrix.style.width = '100%';
+  matrix.style.aspectRatio = '1 / 1';
+  matrix.style.borderRadius = '10px';
+  matrix.style.cursor = 'crosshair';
+  matrix.style.overflow = 'hidden';
+  matrix.setAttribute('data-role', 'matrix');
+
+  const matrixHandle = document.createElement('div');
+  matrixHandle.style.position = 'absolute';
+  matrixHandle.style.width = '14px';
+  matrixHandle.style.height = '14px';
+  matrixHandle.style.border = '2px solid #fff';
+  matrixHandle.style.borderRadius = '50%';
+  matrixHandle.style.boxShadow = '0 0 0 1px rgba(0,0,0,0.35)';
+  matrixHandle.style.transform = 'translate(-50%, -50%)';
+  matrixHandle.setAttribute('data-role', 'matrix-handle');
+  matrix.appendChild(matrixHandle);
+
+  // Hue slider
+  const hue = document.createElement('div');
+  hue.style.position = 'relative';
+  hue.style.height = '16px';
+  hue.style.borderRadius = '999px';
+  hue.style.cursor = 'ew-resize';
+  hue.style.background = 'linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red)';
+  hue.setAttribute('data-role', 'hue');
+
+  const hueHandle = document.createElement('div');
+  hueHandle.style.position = 'absolute';
+  hueHandle.style.top = '50%';
+  hueHandle.style.width = '14px';
+  hueHandle.style.height = '14px';
+  hueHandle.style.border = '2px solid #fff';
+  hueHandle.style.borderRadius = '50%';
+  hueHandle.style.boxShadow = '0 0 0 1px rgba(0,0,0,0.35)';
+  hueHandle.style.transform = 'translate(-50%, -50%)';
+  hueHandle.setAttribute('data-role', 'hue-handle');
+  hue.appendChild(hueHandle);
+
+  // Add to popup
+  colorPopup.appendChild(matrix);
+  colorPopup.appendChild(hue);
+
+  // Store refs on the popup for easy live updates later
+  colorPopup._matrix = matrix;
+  colorPopup._matrixHandle = matrixHandle;
+  colorPopup._hueHandle = hueHandle;
+
+  // Initialize visuals from the current color
+  updateMatrixFromHex(initialHex, colorPopup);
+}
+
+// Live-updates the matrix & handles from a hex value
+// Live-updates the matrix & handles from a hex value (HSV mapping)
+function updateMatrixFromHex(hex, colorPopup) {
+  if (!colorPopup) return;
+  const matrix = colorPopup._matrix;
+  const matrixHandle = colorPopup._matrixHandle;
+  const hueHandle = colorPopup._hueHandle;
+  if (!matrix || !matrixHandle || !hueHandle) return;
+
+  const { h, s, v } = hexToHsv(hex);
+
+  // Visual square: left→right = white→pure hue; bottom→top = black→bright
+  matrix.style.background = `
+    linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0)),
+    linear-gradient(to right, #ffffff, hsl(${h} 100% 50%))
+  `;
+
+  matrixHandle.style.left = (s * 100) + '%';       // S
+  matrixHandle.style.top  = ((1 - v) * 100) + '%'; // V (top = 1)
+  hueHandle.style.left = ((h / 360) * 100) + '%';
+
+  // Keep current HSV handy
+  colorPopup._hsv = { h, s, v };
+}
+
+function makeMatrixInteractive(matrix, matrixHandle, hueHandle, input, div, colorPopup) {
+  // Single source of truth: HSV state
+  let hsv = hexToHsv('#' + input.value.padEnd(6, '0'));
+
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const clampHue = (h) => {
+    // keep [0, 360), avoids 360 flipping to 0 visually
+    h = Math.round(h);
+    if (h < 0) h = (h % 360 + 360) % 360;
+    if (h >= 360) h = h % 360;
+    return h;
+  };
+
+  function setColorFromHsv(newH, newS, newV, {fromDrag=false} = {}) {
+    hsv = { h: clampHue(newH), s: clamp01(newS), v: clamp01(newV) };
+
+    // Update matrix background (depends on hue only)
+    matrix.style.background = `
+      linear-gradient(to top, rgba(0,0,0,1), rgba(0,0,0,0)),
+      linear-gradient(to right, #ffffff, hsl(${hsv.h} 100% 50%))
+    `;
+
+    // Move handles (S, V)
+    matrixHandle.style.left = (hsv.s * 100) + '%';
+    matrixHandle.style.top  = ((1 - hsv.v) * 100) + '%';
+
+    // Move hue handle when hue changes (dragging hue or syncing)
+    // (If we're dragging the matrix we don't change hue)
+    if (!fromDrag) {
+      hueHandle.style.left = ((hsv.h / 360) * 100) + '%';
+    }
+
+    // Push back to HEX + UI
+    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+    input.value = hex.slice(1).toUpperCase();
+
+    // Live preview on swatch
+    div.style.backgroundColor = hex;
+    const textColor = getTextColor(hex);
+    input.style.color = textColor;
+    div.querySelectorAll('i').forEach(icon => (icon.style.color = textColor));
+
+    // Keep popup’s copy in sync so other helpers can read it
+    if (colorPopup) colorPopup._hsv = { ...hsv };
+  }
+
+  // --- Sync HSV whenever the input text changes (typing/paste) ---
+  input.addEventListener('input', () => {
+    const hex = '#' + input.value.toUpperCase().replace(/[^0-9A-F]/g, '').padEnd(6, '0');
+    const newHsv = hexToHsv(hex);
+    setColorFromHsv(newHsv.h, newHsv.s, newHsv.v);
+  });
+
+  // --- Matrix dragging: controls S (x) and V (y) ---
+  matrix.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const rect = matrix.getBoundingClientRect();
+
+    function update(ev) {
+      const s = clamp01((ev.clientX - rect.left) / rect.width);
+      const v = clamp01(1 - (ev.clientY - rect.top) / rect.height);
+      setColorFromHsv(hsv.h, s, v, { fromDrag: true });
+    }
+    function stop() {
+      document.removeEventListener('mousemove', update);
+      document.removeEventListener('mouseup', stop);
+    }
+    update(e);
+    document.addEventListener('mousemove', update);
+    document.addEventListener('mouseup', stop);
+  });
+
+  // --- Hue dragging: controls H only ---
+  const hueBar = hueHandle.parentElement;
+  hueBar.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const rect = hueBar.getBoundingClientRect();
+
+    function update(ev) {
+      const ratio = clamp01((ev.clientX - rect.left) / rect.width);
+      const h = clampHue(ratio * 360);
+      hueHandle.style.left = (ratio * 100) + '%';
+      setColorFromHsv(h, hsv.s, hsv.v);
+    }
+    function stop() {
+      document.removeEventListener('mousemove', update);
+      document.removeEventListener('mouseup', stop);
+    }
+    update(e);
+    document.addEventListener('mousemove', update);
+    document.addEventListener('mouseup', stop);
+  });
+}
+
+// Add this helper
+function hslToHex(h, s, l) {
+  s = s; l = l;
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+  const m = l - c/2;
+  let r=0,g=0,b=0;
+
+  if (0 <= h && h < 60) { r=c; g=x; b=0; }
+  else if (60 <= h && h < 120) { r=x; g=c; b=0; }
+  else if (120 <= h && h < 180) { r=0; g=c; b=x; }
+  else if (180 <= h && h < 240) { r=0; g=x; b=c; }
+  else if (240 <= h && h < 300) { r=x; g=0; b=c; }
+  else if (300 <= h && h < 360) { r=c; g=0; b=x; }
+
+  r = Math.round((r+m)*255);
+  g = Math.round((g+m)*255);
+  b = Math.round((b+m)*255);
+
+  return "#" + [r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
 
 function switchToInput(hexText, div, i) {
   const textColor = hexText.style.color;
@@ -882,15 +1205,51 @@ function switchToInput(hexText, div, i) {
   input.maxLength = 6;
   input.value = hexText.innerText;
   input.style.color = textColor;
+  input.style.padding = '0';
+  input.style.border = '1px solid #FFF';
+  input.style.borderRadius = '16px';
   input.autocomplete = 'off';
   input.spellcheck = false;
   input.inputMode = 'text';
   input.pattern = '[0-9A-Fa-f]{0,6}';
   input.title = 'Edit color (hex)';
-  // Mobile-specific attributes for better input experience
   input.setAttribute('autocorrect', 'off');
   input.setAttribute('autocapitalize', 'off');
   input.setAttribute('spellcheck', 'false');
+
+  // Create popup window for desktop only
+  let colorPopup = null;
+  if (window.innerWidth > 768) {
+    colorPopup = document.createElement('div');
+    colorPopup.className = 'color-popup';
+    colorPopup.style.position = 'absolute';
+    colorPopup.style.width = '90%';
+    colorPopup.style.height = '250px';
+    colorPopup.style.backgroundColor = '#FFFFFF';
+    colorPopup.style.borderRadius = '16px';
+    colorPopup.style.border = 'none';
+    colorPopup.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+    colorPopup.style.zIndex = '1000';
+    colorPopup.style.left = '50%';
+    colorPopup.style.transform = 'translateX(-50%)';
+    colorPopup.style.top = 'calc(50% + 30px)';
+    colorPopup.style.pointerEvents = 'auto';
+
+    div.appendChild(colorPopup);
+
+    // Initialize picker UI from the current color
+    const currentHex = '#' + (hexText.innerText || '000000');
+    buildColorPickerSkeleton(colorPopup, currentHex);
+    makeMatrixInteractive(
+      colorPopup._matrix,
+      colorPopup._matrixHandle,
+      colorPopup._hueHandle,
+      input,
+      div,
+      colorPopup
+    );
+  }
+
   hexText.replaceWith(input);
   input.focus();
   input.select();
@@ -900,15 +1259,23 @@ function switchToInput(hexText, div, i) {
     if (val.length > 6) val = val.slice(0, 6);
     input.value = val;
     let padded = val.padEnd(6, '0');
-    div.style.backgroundColor = '#' + padded;
-    const liveTextColor = getTextColor('#' + padded);
+    const hex = '#' + padded;
+
+    // Live preview on the swatch
+    div.style.backgroundColor = hex;
+    const liveTextColor = getTextColor(hex);
     input.style.color = liveTextColor;
     div.querySelectorAll('i').forEach(icon => icon.style.color = liveTextColor);
-    // Keep heart icons in sync with favorite colors during live edits
+
+    // 🔥 Live update the matrix & handles if the popup is open
+    if (colorPopup) {
+      updateMatrixFromHex(hex, colorPopup);
+    }
+
+    // Keep existing app sync
     if (typeof updateHeartIconsForColors === 'function') {
       try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
     }
-    // Also sync toolbar favorite palette heart (order-insensitive)
     try { updateToolbarFavoritePaletteIconLocal?.(); } catch (_) {}
   });
 
@@ -919,49 +1286,77 @@ function switchToInput(hexText, div, i) {
     document.execCommand('insertText', false, text);
   });
 
-  input.addEventListener('blur', commit);
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') commit();
-  });
-
+  // --- Commit function ---
+  let committed = false;
   function commit() {
-    let val = input.value.toUpperCase().replace(/[^0-9A-F]/g, '');
+    if (committed) return; // prevent double execution
+    committed = true;
+
+    document.removeEventListener('mousedown', handleOutsideClick);
+    input.removeEventListener('blur', commit);
+    input.removeEventListener('keydown', keydownHandler);
+
+    let val = input.value.toUpperCase().replace(/[^0-9A-F]/g, '').padEnd(6, '0');
     const prev = JSON.parse(JSON.stringify(paletteState));
-    val = val.padEnd(6, '0');
-    hexText.innerText = val;
+
+    // Build a fresh <span class="hex-code">
+    const newHexText = document.createElement('span');
+    newHexText.className = 'hex-code';
+    newHexText.innerText = val;
+    newHexText.style.color = getTextColor('#' + val);
+    newHexText.tabIndex = 0;
+
     div.style.backgroundColor = '#' + val;
-    const liveTextColor = getTextColor('#' + val);
-    hexText.style.color = liveTextColor;
-    div.querySelectorAll('i').forEach(icon => icon.style.color = liveTextColor);
+    div.querySelectorAll('i').forEach(icon => icon.style.color = newHexText.style.color);
+
     if (Array.isArray(paletteState) && paletteState[i]) {
       paletteState[i].color = '#' + val;
     }
-    recordPaletteChange(prev); // Record the change
-    input.replaceWith(hexText); // Then replace the input with the hex text
-    
-    // Re-attach event listeners to the hex text element
-    hexText.tabIndex = 0;
-    hexText.addEventListener('click', () => switchToInput(hexText, div, i));
-    hexText.addEventListener('touchend', (e) => {
+    recordPaletteChange(prev);
+
+    if (colorPopup) {
+      // Clean up stored refs to avoid leaks
+      colorPopup._matrix = null;
+      colorPopup._matrixHandle = null;
+      colorPopup._hueHandle = null;
+      colorPopup.remove();
+    }
+
+    input.replaceWith(newHexText);
+
+    // Re-attach event listeners to the new span
+    newHexText.addEventListener('click', () => switchToInput(newHexText, div, i));
+    newHexText.addEventListener('touchend', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      switchToInput(hexText, div, i);
+      switchToInput(newHexText, div, i);
     });
-    hexText.addEventListener('keydown', (e) => {
+    newHexText.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        switchToInput(hexText, div, i);
+        switchToInput(newHexText, div, i);
       }
     });
-    
-    // After committing the edit, ensure heart icons reflect favorite status
+
     if (typeof updateHeartIconsForColors === 'function') {
       try { updateHeartIconsForColors(sidebarFavoriteColors || []); } catch (_) {}
     }
     try { updateToolbarFavoritePaletteIconLocalWithFallback?.(); } catch (_) {}
   }
-}
 
+  function handleOutsideClick(e) {
+    if (!input.contains(e.target) && (!colorPopup || !colorPopup.contains(e.target))) {
+      commit();
+    }
+  }
+  document.addEventListener('mousedown', handleOutsideClick);
+
+  function keydownHandler(e) {
+    if (e.key === 'Enter') commit();
+  }
+  input.addEventListener('keydown', keydownHandler);
+  input.addEventListener('blur', commit);
+}
 
 function getCurrentPaletteHexes() {
   const colorDivs = document.querySelectorAll(".gen-color");
@@ -1099,10 +1494,20 @@ function updatePaletteDOM() {
     copyIcon.style.color = textColor;
     copyIcon.title = 'Copy to clipboard';
     copyIcon.onclick = () => {
-      navigator.clipboard.writeText(color.replace(/^#/, '').toUpperCase()).then(() => {
-        copyIcon.classList.replace('fa-copy', 'fa-check');
-        setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
-      });
+      let hexValue = null;
+      const input = div.querySelector('.hex-input');
+      const span = div.querySelector('.hex-code');
+      if (input && document.activeElement === input) {
+        hexValue = input.value.toUpperCase();
+      } else if (span) {
+        hexValue = span.innerText.toUpperCase();
+      }
+      if (hexValue && hexValue.length > 0) {
+        navigator.clipboard.writeText(hexValue).then(() => {
+          copyIcon.classList.replace('fa-copy', 'fa-check');
+          setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
+        });
+      }
     };
 
     const dragIcon = document.createElement('i');
@@ -1566,12 +1971,22 @@ function renderSidebarFavoritePalettes() {
     copyIcon.style.color = textColor;
     copyIcon.title = "Copy to clipboard";
     copyIcon.onclick = () => {
-      navigator.clipboard.writeText(color.replace(/^#/, "").toUpperCase()).then(() => {
-        copyIcon.classList.replace("fa-copy", "fa-check");
-        setTimeout(() => {
-          copyIcon.classList.replace("fa-check", "fa-copy");
-        }, 1000);
-      });
+      let hexValue = null;
+      const input = div.querySelector('.hex-input');
+      const span = div.querySelector('.hex-code');
+      if (input && document.activeElement === input) {
+        hexValue = input.value.toUpperCase();
+      } else if (span) {
+        hexValue = span.innerText.toUpperCase();
+      }
+      if (hexValue && hexValue.length > 0) {
+        navigator.clipboard.writeText(hexValue).then(() => {
+          copyIcon.classList.replace('fa-copy', 'fa-check');
+          setTimeout(() => {
+            copyIcon.classList.replace('fa-check', 'fa-copy');
+          }, 1000);
+        });
+      }
     };
 
     const dragIcon = document.createElement("i");
@@ -2086,12 +2501,22 @@ function updateFavoritesDropdown(palettes = []) {
         copyIcon.style.color = textColor;
         copyIcon.title = "Copy to clipboard";
         copyIcon.onclick = () => {
-          navigator.clipboard.writeText(color.replace(/^#/, "").toUpperCase()).then(() => {
-            copyIcon.classList.replace("fa-copy", "fa-check");
-            setTimeout(() => {
-              copyIcon.classList.replace("fa-check", "fa-copy");
-            }, 1000);
-          });
+          let hexValue = null;
+          const input = div.querySelector('.hex-input');
+          const span = div.querySelector('.hex-code');
+          if (input && document.activeElement === input) {
+            hexValue = input.value.toUpperCase();
+          } else if (span) {
+            hexValue = span.innerText.toUpperCase();
+          }
+          if (hexValue && hexValue.length > 0) {
+            navigator.clipboard.writeText(hexValue).then(() => {
+              copyIcon.classList.replace('fa-copy', 'fa-check');
+              setTimeout(() => {
+                copyIcon.classList.replace('fa-check', 'fa-copy');
+              }, 1000);
+            });
+          }
         };
         const dragIcon = document.createElement("i");
         dragIcon.className = "fa-solid fa-left-right";
@@ -3107,10 +3532,20 @@ function rebuildGenColorDOMForLayout() {
     copyIcon.style.color = textColor;
     copyIcon.title = 'Copy to clipboard';
     copyIcon.onclick = () => {
-      navigator.clipboard.writeText(hex).then(() => {
-        copyIcon.classList.replace('fa-copy', 'fa-check');
-        setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
-      });
+      let hexValue = null;
+      const input = div.querySelector('.hex-input');
+      const span = div.querySelector('.hex-code');
+      if (input && document.activeElement === input) {
+        hexValue = input.value.toUpperCase();
+      } else if (span) {
+        hexValue = span.innerText.toUpperCase();
+      }
+      if (hexValue && hexValue.length > 0) {
+        navigator.clipboard.writeText(hexValue).then(() => {
+          copyIcon.classList.replace('fa-copy', 'fa-check');
+          setTimeout(() => copyIcon.classList.replace('fa-check', 'fa-copy'), 1000);
+        });
+      }
     };
 
     const dragIcon = document.createElement('i');
