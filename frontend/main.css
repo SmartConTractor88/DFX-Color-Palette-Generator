@@ -476,8 +476,8 @@ body {
 .sidebar-favorites {
   position: fixed;
   top: 0;
-  right: -30vw;
-  width: 25vw;
+  right: -32vw;
+  width: 30vw;
   height: 100vh;
   background-color: var(--bg-color);
   border-left: 1px solid var(--border-color);
@@ -526,6 +526,7 @@ body {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
 /* Remove food-list styles */
@@ -1309,7 +1310,7 @@ body {
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  padding: 20px 20px 16px 20px;
+  padding: 24px 24px 20px 24px;
   margin-bottom: 18px;
   display: flex;
   flex-direction: column;
@@ -1333,8 +1334,8 @@ body {
   gap: 10px;
 }
 .sidebar-fav-color-box {
-  width: 29px;
-  height: 29px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   border: 1.5px solid #e0e0e0;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
@@ -1394,7 +1395,7 @@ body {
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  padding: 18px;
+  padding: 22px;
   margin-bottom: 18px;
   display: flex;
   flex-direction: column;
@@ -1445,8 +1446,8 @@ body {
   margin-top: 6px;
 }
 .sidebar-fav-color-box {
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   border-radius: 12px;
   border: 2px solid #e0e0e0;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
@@ -1559,6 +1560,18 @@ body {
   .sidebar-fav-color-delete-btn,
   .sidebar-fav-color-copy-btn {
     padding: 2px;
+  }
+  
+  /* Reset color box sizes for mobile */
+  .sidebar-fav-color-box {
+    width: 29px;
+    height: 29px;
+  }
+  
+  /* Reset individual color card boxes for mobile */
+  .sidebar-fav-color-card .sidebar-fav-color-box {
+    width: 48px;
+    height: 48px;
   }
 }
 

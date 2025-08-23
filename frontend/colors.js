@@ -4,9 +4,9 @@ function generateRandomHexColor() {
 }
 
 const roleDistribution = [
-    { role: 'neutral', weight: 0.28 },
-    { role: 'accent', weight: 0.37 },
-    { role: 'variant', weight: 0.35 }
+    { role: 'neutral', weight: 0.20 },
+    { role: 'accent', weight: 0.35 },
+    { role: 'variant', weight: 0.45 }
 ];
 
 // track used roles within one palette generation
@@ -60,29 +60,20 @@ function jitter(value, amount = 30) {
     return Math.min(255, Math.max(0, value + Math.floor((Math.random() - 0.5) * amount * 2)));
 }
 
-function generateNeutralColor(baseColor) {
-    const hex = baseColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-
-    const avg = Math.round((r + g + b) / 3);
-
-    // pick light or dark bias more often, avoid muddy middle range
-    let brightness;
+function generateNeutralColor() {
+    let newVal;
     const roll = Math.random();
-    if (roll < 0.45) {
-        // 45% chance: light gray / near white
-        brightness = 0.75 + Math.random() * 0.25; // 75%–100%
-    } else if (roll < 0.9) {
-        // 45% chance: dark gray / near black
-        brightness = 0.05 + Math.random() * 0.25; // 5%–30%
-    } else {
-        // 10% chance: allow mid-gray for variety
-        brightness = 0.35 + Math.random() * 0.15; // 35%–50%
-    }
 
-    const newVal = Math.max(0, Math.min(255, Math.round(avg * brightness)));
+    if (roll < 0.48) {
+        // ~48% chance: light gray / near white
+        newVal = 200 + Math.floor(Math.random() * 55); // 200–255
+    } else if (roll < 0.96) {
+        // ~48% chance: dark gray / near black
+        newVal = Math.floor(Math.random() * 80); // 0–79
+    } else {
+        // ~4% chance: mid-gray for variety
+        newVal = 100 + Math.floor(Math.random() * 40); // 100–139
+    }
 
     return '#' + [newVal, newVal, newVal]
         .map(x => x.toString(16).padStart(2, '0'))
@@ -92,51 +83,122 @@ function generateNeutralColor(baseColor) {
 
 function generateAccentColor(baseColor) {
     const hex = baseColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
+    const r = parseInt(hex.substr(0, 2), 16) / 255;
+    const g = parseInt(hex.substr(2, 2), 16) / 255;
+    const b = parseInt(hex.substr(4, 2), 16) / 255;
 
-    let newR, newG, newB;
-    const mode = Math.random();
+    // Convert to HSL to detect saturation
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l;
+    l = (max + min) / 2;
 
-    if (mode < 0.5) {
-        // Complementary (invert with jitter)
-        newR = jitter(255 - r);
-        newG = jitter(255 - g);
-        newB = jitter(255 - b);
+    if (max === min) {
+        h = s = 0;
     } else {
-        // Hue shift (rotate channels + jitter)
-        newR = jitter(g);
-        newG = jitter(b);
-        newB = jitter(r);
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
     }
 
-    return '#' + [newR, newG, newB].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+    // Boost saturation if base color is dull
+    let newH = (h * 360 + (Math.random() * 120 + 60)) % 360; // shift hue 60–180°
+    let newS = s < 0.25 ? 0.8 + Math.random() * 0.2 : Math.min(1, s + 0.3); // strong if dull
+    let newL = Math.min(1, Math.max(0, l + (Math.random() - 0.5) * 0.4)); // vary lightness
+
+    // Convert HSL back to RGB
+    function hue2rgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    }
+
+    const q = newL < 0.5 ? newL * (1 + newS) : newL + newS - newL * newS;
+    const p = 2 * newL - q;
+    const rOut = hue2rgb(p, q, newH / 360 + 1 / 3);
+    const gOut = hue2rgb(p, q, newH / 360);
+    const bOut = hue2rgb(p, q, newH / 360 - 1 / 3);
+
+    const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${toHex(rOut)}${toHex(gOut)}${toHex(bOut)}`.toUpperCase();
 }
 
 // --- NEW: variant role (RGB permutation / channel mixing) ---
 function generateVariantColor(baseColor) {
+    // Parse base color RGB
     const hex = baseColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
+    const r = parseInt(hex.substr(0, 2), 16) / 255;
+    const g = parseInt(hex.substr(2, 2), 16) / 255;
+    const b = parseInt(hex.substr(4, 2), 16) / 255;
 
-    const modes = [
-        [r, g, b],
-        [r, b, g],
-        [g, r, b],
-        [g, b, r],
-        [b, r, g],
-        [b, g, r]
-    ];
+    // Convert RGB → HSL
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l;
+    l = (max + min) / 2;
 
-    // pick one permutation at random, then jitter slightly
-    const [newR, newG, newB] = modes[Math.floor(Math.random() * modes.length)];
-    return '#' + [jitter(newR), jitter(newG), jitter(newB)]
-        .map(x => x.toString(16).padStart(2, '0'))
-        .join('')
-        .toUpperCase();
+    if (max === min) {
+        h = s = 0; // gray
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    // Convert hue to degrees
+    h = h * 360;
+
+    // --- Shift hue ---
+    let shift = 60 + Math.random() * 100; // always a noticeable shift (60°–160°)
+    if (Math.random() < 0.5) shift = -shift; // random direction
+
+    let newH = h + shift;
+
+    // Clamp within 0–360
+    if (newH < 0) newH += 360;
+    if (newH >= 360) newH -= 360;
+
+    // Rebuild RGB from HSL
+    function hue2rgb(p, q, t) {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    }
+
+    const hNorm = newH / 360;
+    let rOut, gOut, bOut;
+
+    if (s === 0) {
+        rOut = gOut = bOut = l; // gray
+    } else {
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        rOut = hue2rgb(p, q, hNorm + 1 / 3);
+        gOut = hue2rgb(p, q, hNorm);
+        bOut = hue2rgb(p, q, hNorm - 1 / 3);
+    }
+
+    // Convert back to HEX
+    const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${toHex(rOut)}${toHex(gOut)}${toHex(bOut)}`.toUpperCase();
 }
+
 
 function isNeutralColor(hex) {
     const r = parseInt(hex.substr(1, 2), 16);
@@ -213,22 +275,41 @@ function ensureUniqueColor(generatorFn, ...args) {
     return color;
 }
 
+function adjustRoleForDullBase(baseColor) {
+    const hex = baseColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16) / 255;
+    const g = parseInt(hex.substr(2, 2), 16) / 255;
+    const b = parseInt(hex.substr(4, 2), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const sat = max === 0 ? 0 : (max - min) / max;
+
+    // If saturation is very low → treat as dull/neutralish
+    return sat < 0.25;
+}
+
 function getNewColor(index, paletteState) {
     if (index === 0) {
-        usedRoles.clear(); // reset at start of palette
-        usedColors = new Set(); // reset duplicate prevention
+        usedRoles.clear();       // reset at start of palette
+        usedColors = new Set();  // reset duplicate prevention
         usedColorList = [];
     }
 
     const lockedColors = paletteState ? paletteState.filter(c => c.isLocked).map(c => c.color) : [];
 
-    // NEW: check if all locked colors are neutral
+    // check if all locked colors are neutral
     const allNeutral = lockedColors.length > 0 && lockedColors.every(c => isNeutralColor(c));
 
     // pick base normally unless all locked are neutral
     const baseColor = allNeutral ? generateRandomHexColor() : getBaseColorFromLocks(lockedColors);
 
-    const role = pickRoleWithDiversity();
+    // pick role
+    let role = pickRoleWithDiversity();
+
+    // If base is dull/low-saturation, bias toward accents ---
+    if (adjustRoleForDullBase(baseColor) && Math.random() < 0.45) {
+        role = 'accent'; // force accents 60% of the time
+    }
 
     switch (role) {
         case 'neutral':

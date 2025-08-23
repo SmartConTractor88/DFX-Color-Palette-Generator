@@ -1093,7 +1093,7 @@ function makeMatrixInteractive(matrix, matrixHandle, hueHandle, input, div, colo
     return h;
   };
 
-  function setColorFromHsv(newH, newS, newV, {fromDrag=false} = {}) {
+  function setColorFromHsv(newH, newS, newV, {fromDrag=false, updateInput=true} = {}) {
     hsv = { h: clampHue(newH), s: clamp01(newS), v: clamp01(newV) };
 
     // Update matrix background (depends on hue only)
@@ -1112,17 +1112,20 @@ function makeMatrixInteractive(matrix, matrixHandle, hueHandle, input, div, colo
       hueHandle.style.left = ((hsv.h / 360) * 100) + '%';
     }
 
-    // Push back to HEX + UI
-    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
-    input.value = hex.slice(1).toUpperCase();
+    // Push back to HEX + UI (only if not from user typing)
+    if (updateInput) {
+      const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
+      input.value = hex.slice(1).toUpperCase();
+    }
 
     // Live preview on swatch
+    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
     div.style.backgroundColor = hex;
     const textColor = getTextColor(hex);
     input.style.color = textColor;
     div.querySelectorAll('i').forEach(icon => (icon.style.color = textColor));
 
-    // Keep popup’s copy in sync so other helpers can read it
+    // Keep popup's copy in sync so other helpers can read it
     if (colorPopup) colorPopup._hsv = { ...hsv };
   }
 
@@ -1130,7 +1133,7 @@ function makeMatrixInteractive(matrix, matrixHandle, hueHandle, input, div, colo
   input.addEventListener('input', () => {
     const hex = '#' + input.value.toUpperCase().replace(/[^0-9A-F]/g, '').padEnd(6, '0');
     const newHsv = hexToHsv(hex);
-    setColorFromHsv(newHsv.h, newHsv.s, newHsv.v);
+    setColorFromHsv(newHsv.h, newHsv.s, newHsv.v, { updateInput: false });
   });
 
   // --- Matrix dragging: controls S (x) and V (y) ---

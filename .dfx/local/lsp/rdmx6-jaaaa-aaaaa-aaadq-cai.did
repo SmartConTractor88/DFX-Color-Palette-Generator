@@ -198,6 +198,7 @@ type GetIdAliasRequest = record {
   relying_party : FrontendHostname;
   identity_number : IdentityNumber;
 };
+type GoogleOpenIdConfig = record { client_id : text };
 type HeaderField = record { text; text };
 type HttpRequest = record {
   url : text;
@@ -277,7 +278,7 @@ type IdentityPropertiesReplaceError = variant {
 };
 type InternetIdentityInit = record {
   fetch_root_key : opt bool;
-  openid_google : opt opt OpenIdConfig;
+  openid_google : opt opt GoogleOpenIdConfig;
   is_production : opt bool;
   enable_dapps_explorer : opt bool;
   assigned_user_number_range : opt record { nat64; nat64 };
@@ -285,8 +286,10 @@ type InternetIdentityInit = record {
   archive_config : opt ArchiveConfig;
   canister_creation_cycles_cost : opt nat64;
   analytics_config : opt opt AnalyticsConfig;
+  feature_flag_enable_generic_open_id_fe : opt bool;
   related_origins : opt vec text;
   feature_flag_continue_from_another_device : opt bool;
+  openid_configs : opt vec OpenIdConfig;
   captcha_config : opt CaptchaConfig;
   dummy_auth : opt opt DummyAuthConfig;
   register_rate_limit : opt RateLimitConfig;
@@ -318,7 +321,16 @@ type MetadataMapV2 = vec record {
   variant { Map : MetadataMapV2; String : text; Bytes : blob };
 };
 type OpenIDRegFinishArg = record { jwt : JWT; salt : Salt };
-type OpenIdConfig = record { client_id : text };
+type OpenIdConfig = record {
+  auth_uri : text;
+  jwks_uri : text;
+  logo : text;
+  name : text;
+  fedcm_uri : opt text;
+  issuer : text;
+  auth_scope : vec text;
+  client_id : text;
+};
 type OpenIdCredential = record {
   aud : Aud;
   iss : Iss;
